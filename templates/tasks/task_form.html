@@ -1,0 +1,232 @@
+{% extends "base.html" %}
+{% block title %}{% if task %}Edytuj zadanie{% else %}Nowe zadanie{% endif %} — NovaPM{% endblock %}
+
+{% block content %}
+<nav class="bg-gray-900 border-b border-gray-800 px-6 py-3 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+        <div class="flex items-center justify-center w-8 h-8 rounded-lg bg-indigo-600">
+            <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+            </svg>
+        </div>
+        <span class="font-bold text-white text-lg tracking-tight">NovaPM</span>
+    </div>
+    <div class="flex items-center gap-4">
+        <div class="text-right hidden sm:block">
+            <p class="text-sm font-medium text-gray-200">{{ request.user.get_full_name|default:request.user.username }}</p>
+            <p class="text-xs text-indigo-400">{{ request.user.get_role_display }}</p>
+        </div>
+        <a href="{% url 'user_profile' %}"
+           class="text-xs text-gray-500 hover:text-gray-300 transition">Mój profil</a>
+        <form method="post" action="{% url 'logout' %}">{% csrf_token %}
+            <button type="submit" class="rounded-lg bg-gray-800 hover:bg-gray-700 border border-gray-700 px-3 py-1.5 text-xs font-medium text-gray-300 transition cursor-pointer">Wyloguj</button>
+        </form>
+    </div>
+</nav>
+
+<main class="max-w-3xl mx-auto px-6 py-8">
+    <div class="mb-6">
+        {% if next_url == 'my_tasks' %}
+        <a href="{% url 'my_tasks' %}" class="inline-flex items-center gap-1.5 text-sm text-gray-400 hover:text-indigo-400 transition">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+            Wróć do moich zadań
+        </a>
+        {% elif project %}
+        <a href="{% url 'project_tasks' pk=project.pk %}" class="inline-flex items-center gap-1.5 text-sm text-gray-400 hover:text-indigo-400 transition">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+            Wróć do zadań projektu
+        </a>
+        {% endif %}
+    </div>
+
+    <div class="mb-6">
+        <h1 class="text-2xl font-bold text-white">{% if task %}Edytuj zadanie{% else %}Nowe zadanie{% endif %}</h1>
+        {% if project %}<p class="text-sm text-gray-400 mt-0.5">Projekt: <span class="text-indigo-400">{{ project.name }}</span></p>{% endif %}
+    </div>
+
+    {# Widok developera — tylko status i actual_hours #}
+    {% if task and not is_pm_or_staff %}
+    <div class="bg-gray-900 border border-gray-800 rounded-xl p-6">
+        <div class="mb-4">
+            <p class="text-sm font-semibold text-white">{{ task.title }}</p>
+            <p class="text-xs text-gray-500 mt-0.5">{{ task.project.name }}</p>
+        </div>
+        <form method="post" novalidate>
+            {% csrf_token %}
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                <div>
+                    <label for="{{ form.status.id_for_label }}" class="block text-sm font-medium text-gray-300 mb-1">{{ form.status.label }}</label>
+                    {{ form.status }}
+                    {% for e in form.status.errors %}<p class="mt-1 text-xs text-red-400">{{ e }}</p>{% endfor %}
+                </div>
+                <div>
+                    <label for="{{ form.actual_hours.id_for_label }}" class="block text-sm font-medium text-gray-300 mb-1">{{ form.actual_hours.label }}</label>
+                    {{ form.actual_hours }}
+                    <p class="text-xs text-gray-600 mt-1">Łączny przepracowany czas w godzinach</p>
+                    {% for e in form.actual_hours.errors %}<p class="mt-1 text-xs text-red-400">{{ e }}</p>{% endfor %}
+                </div>
+            </div>
+            <div class="flex justify-end gap-3 mt-6 pt-5 border-t border-gray-800">
+                <a href="{% url 'my_tasks' %}" class="rounded-lg bg-gray-800 hover:bg-gray-700 border border-gray-700 px-5 py-2.5 text-sm font-medium text-gray-300 transition">Anuluj</a>
+                <button type="submit" class="inline-flex items-center gap-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 px-5 py-2.5 text-sm font-semibold text-white transition cursor-pointer">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                    Zapisz
+                </button>
+            </div>
+        </form>
+    </div>
+
+    {# Sekcja Akcji — developer/tester/PM, nie dla analityka #}
+    {% if request.user.role != 'ANALYST' and is_assigned or is_pm_or_staff %}
+    <div class="mt-4 bg-gray-900 border border-gray-800 rounded-xl p-6">
+        <h2 class="text-sm font-semibold uppercase tracking-wider text-gray-500 mb-4">Akcje</h2>
+
+        {% if task.status == 'TODO' or task.status == 'IN_PROGRESS' %}
+        {# Wyślij do testera #}
+        <form method="post" action="{% url 'task_quick_status' pk=task.pk %}">
+            {% csrf_token %}
+            <input type="hidden" name="status" value="IN_REVIEW">
+            <input type="hidden" name="next" value="{{ next_url }}">
+            <div class="flex items-center gap-4">
+                <button type="submit"
+                        class="inline-flex items-center gap-2 rounded-lg bg-violet-700 hover:bg-violet-600 px-5 py-2.5 text-sm font-semibold text-white transition cursor-pointer">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
+                    {% if last_review and last_review.result == 'REJECTED' %}Wyślij ponownie do testera{% else %}Wyślij do testera{% endif %}
+                </button>
+                <p class="text-xs text-gray-600">Zadanie zostanie oznaczone jako „W przeglądzie"</p>
+            </div>
+        </form>
+
+        {% elif task.status == 'IN_REVIEW' %}
+        {# Oczekuje na weryfikację #}
+        <div class="flex items-center gap-4">
+            <span class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-violet-900/30 border border-violet-800/50 text-sm text-violet-300">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                Oczekuje na weryfikację testera
+            </span>
+            {% if is_pm_or_staff %}
+            <form method="post" action="{% url 'task_quick_status' pk=task.pk %}">
+                {% csrf_token %}
+                <input type="hidden" name="status" value="IN_PROGRESS">
+                <button type="submit"
+                        class="rounded-lg bg-gray-800 hover:bg-gray-700 border border-gray-700 px-3 py-2 text-xs font-medium text-gray-400 hover:text-gray-200 transition cursor-pointer">
+                    Cofnij do W trakcie
+                </button>
+            </form>
+            {% endif %}
+        </div>
+
+        {% elif task.status == 'DONE' %}
+        {# Zatwierdzone #}
+        <div class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-900/30 border border-emerald-800/50 text-sm text-emerald-300">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            Zatwierdzone przez testera{% if last_review and last_review.result == 'APPROVED' %}: {{ last_review.reviewer.get_full_name|default:last_review.reviewer.username }}{% endif %}
+        </div>
+        {% endif %}
+
+    </div>
+    {% endif %}
+
+    {% else %}
+    {# Pełny formularz PM #}
+    <form method="post" novalidate>
+        {% csrf_token %}
+        <div class="bg-gray-900 border border-gray-800 rounded-xl p-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+
+                {# Lewa #}
+                <div class="flex flex-col gap-5">
+                    <div>
+                        <label for="{{ form.title.id_for_label }}" class="block text-sm font-medium text-gray-300 mb-1">{{ form.title.label }} <span class="text-red-500">*</span></label>
+                        {{ form.title }}
+                        {% for e in form.title.errors %}<p class="mt-1 text-xs text-red-400">{{ e }}</p>{% endfor %}
+                    </div>
+                    <div>
+                        <label for="{{ form.description.id_for_label }}" class="block text-sm font-medium text-gray-300 mb-1">{{ form.description.label }}</label>
+                        {{ form.description }}
+                    </div>
+                    <div>
+                        <label for="{{ form.assigned_to.id_for_label }}" class="block text-sm font-medium text-gray-300 mb-1">{{ form.assigned_to.label }}</label>
+                        {{ form.assigned_to }}
+                    </div>
+                </div>
+
+                {# Prawa #}
+                <div class="flex flex-col gap-5">
+                    <div>
+                        <label for="{{ form.status.id_for_label }}" class="block text-sm font-medium text-gray-300 mb-1">{{ form.status.label }} <span class="text-red-500">*</span></label>
+                        {{ form.status }}
+                    </div>
+                    <div>
+                        <label for="{{ form.priority.id_for_label }}" class="block text-sm font-medium text-gray-300 mb-1">{{ form.priority.label }} <span class="text-red-500">*</span></label>
+                        {{ form.priority }}
+                    </div>
+                    <div>
+                        <label for="{{ form.due_date.id_for_label }}" class="block text-sm font-medium text-gray-300 mb-1">{{ form.due_date.label }} <span class="text-red-500">*</span></label>
+                        {{ form.due_date }}
+                        {% for e in form.due_date.errors %}<p class="mt-1 text-xs text-red-400">{{ e }}</p>{% endfor %}
+                    </div>
+                    <div>
+                        <label for="{{ form.estimated_hours.id_for_label }}" class="block text-sm font-medium text-gray-300 mb-1">{{ form.estimated_hours.label }}</label>
+                        {{ form.estimated_hours }}
+                        <p class="text-xs text-gray-600 mt-1">Szacowany czas w godzinach (np. 8, 16)</p>
+                    </div>
+                </div>
+            </div>
+
+            {% if form.non_field_errors %}
+            <div class="mt-4 rounded-lg bg-red-900/40 border border-red-700 px-4 py-3">
+                {% for e in form.non_field_errors %}<p class="text-sm text-red-300">{{ e }}</p>{% endfor %}
+            </div>
+            {% endif %}
+
+            <div class="flex justify-end gap-3 mt-6 pt-5 border-t border-gray-800">
+                {% if project %}
+                <a href="{% url 'project_tasks' pk=project.pk %}" class="rounded-lg bg-gray-800 hover:bg-gray-700 border border-gray-700 px-5 py-2.5 text-sm font-medium text-gray-300 transition">Anuluj</a>
+                {% endif %}
+                <button type="submit" class="inline-flex items-center gap-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 px-5 py-2.5 text-sm font-semibold text-white transition cursor-pointer">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                    {% if task %}Zapisz zmiany{% else %}Dodaj zadanie{% endif %}
+                </button>
+            </div>
+        </div>
+    </form>
+    {% endif %}
+
+    {% if reviews %}
+    <section class="mt-6 bg-gray-900 border border-gray-800 rounded-xl p-6">
+        <h2 class="text-sm font-semibold uppercase tracking-wider text-gray-500 mb-4">Historia testowania</h2>
+        <div class="flex flex-col gap-3">
+            {% for review in reviews %}
+            <div class="flex gap-3">
+                <div class="shrink-0 mt-0.5">
+                    {% if review.result == 'APPROVED' %}
+                    <span class="flex items-center justify-center w-6 h-6 rounded-full bg-emerald-900/60">
+                        <svg class="w-3.5 h-3.5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+                    </span>
+                    {% else %}
+                    <span class="flex items-center justify-center w-6 h-6 rounded-full bg-red-900/60">
+                        <svg class="w-3.5 h-3.5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/></svg>
+                    </span>
+                    {% endif %}
+                </div>
+                <div class="flex-1 min-w-0">
+                    <div class="flex items-center gap-2 mb-0.5">
+                        <span class="text-xs font-medium {% if review.result == 'APPROVED' %}text-emerald-400{% else %}text-red-400{% endif %}">{{ review.get_result_display }}</span>
+                        <span class="text-xs text-gray-600">·</span>
+                        <span class="text-xs text-gray-500">{{ review.reviewer.get_full_name|default:review.reviewer.username }}</span>
+                        <span class="text-xs text-gray-600">·</span>
+                        <span class="text-xs text-gray-600">{{ review.created_at|date:"d.m.Y H:i" }}</span>
+                    </div>
+                    {% if review.comment %}
+                    <p class="text-xs text-gray-400 italic">{{ review.comment }}</p>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </section>
+    {% endif %}
+
+</main>
+{% endblock %}

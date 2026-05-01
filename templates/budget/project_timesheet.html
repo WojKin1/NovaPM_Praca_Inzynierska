@@ -1,0 +1,201 @@
+{% extends "base.html" %}
+{% block title %}Zatwierdzanie godzin — {{ project.name }} — NovaPM{% endblock %}
+
+{% block content %}
+<nav class="bg-gray-900 border-b border-gray-800 px-6 py-3 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+        <div class="flex items-center justify-center w-8 h-8 rounded-lg bg-indigo-600">
+            <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+            </svg>
+        </div>
+        <span class="font-bold text-white text-lg tracking-tight">NovaPM</span>
+    </div>
+    <div class="flex items-center gap-4">
+        <div class="text-right hidden sm:block">
+            <p class="text-sm font-medium text-gray-200">{{ request.user.get_full_name|default:request.user.username }}</p>
+            <p class="text-xs text-indigo-400">{{ request.user.get_role_display }}</p>
+        </div>
+        <a href="{% url 'user_profile' %}"
+           class="text-xs text-gray-500 hover:text-gray-300 transition">Mój profil</a>
+        <form method="post" action="{% url 'logout' %}">{% csrf_token %}
+            <button type="submit" class="rounded-lg bg-gray-800 hover:bg-gray-700 border border-gray-700 px-3 py-1.5 text-xs font-medium text-gray-300 transition cursor-pointer">Wyloguj</button>
+        </form>
+    </div>
+</nav>
+
+<main class="max-w-6xl mx-auto px-6 py-8">
+
+    <div class="mb-4">
+        <a href="{% url 'project_detail' project.pk %}" class="inline-flex items-center gap-1.5 text-sm text-gray-400 hover:text-indigo-400 transition">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+            Wróć do projektu
+        </a>
+    </div>
+
+    <div class="flex flex-wrap items-start justify-between gap-4 mb-8">
+        <div>
+            <h1 class="text-2xl font-bold text-white">Zatwierdzanie godzin</h1>
+            <p class="text-sm text-gray-400 mt-0.5">{{ project.name }}</p>
+        </div>
+    </div>
+
+    {# Statystyki — 5 kart #}
+    <div class="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
+        <div class="bg-gray-900 border border-gray-800 rounded-xl p-5">
+            <p class="text-xs uppercase tracking-widest text-gray-500 mb-1">Oczekujące</p>
+            <p class="text-2xl font-bold text-yellow-400">{{ stats.pending|floatformat:1 }}<span class="text-sm text-gray-500 ml-1">h</span></p>
+        </div>
+        <div class="bg-gray-900 border border-gray-800 rounded-xl p-5">
+            <p class="text-xs uppercase tracking-widest text-gray-500 mb-1">Zatwierdzone</p>
+            <p class="text-2xl font-bold text-emerald-400">{{ stats.approved|floatformat:1 }}<span class="text-sm text-gray-500 ml-1">h</span></p>
+        </div>
+        <div class="bg-gray-900 border border-gray-800 rounded-xl p-5">
+            <p class="text-xs uppercase tracking-widest text-gray-500 mb-1">Odrzucone</p>
+            <p class="text-2xl font-bold text-red-400">{{ stats.rejected|floatformat:1 }}<span class="text-sm text-gray-500 ml-1">h</span></p>
+        </div>
+        <div class="bg-gray-900 border border-gray-800 rounded-xl p-5">
+            <p class="text-xs uppercase tracking-widest text-gray-500 mb-1">Łącznie</p>
+            <p class="text-2xl font-bold text-white">{{ stats.total|floatformat:1 }}<span class="text-sm text-gray-500 ml-1">h</span></p>
+        </div>
+        <div class="bg-gray-900 border border-gray-800 rounded-xl p-5">
+            <p class="text-xs uppercase tracking-widest text-gray-500 mb-1">Pracowników</p>
+            <p class="text-2xl font-bold text-indigo-400">{{ stats.workers }}</p>
+        </div>
+    </div>
+
+    {# Filtry pill #}
+    <div class="flex flex-wrap items-center gap-2 mb-6">
+        <a href="{% url 'project_timesheet' project.pk %}"
+           class="px-4 py-1.5 rounded-full text-sm font-medium transition
+                  {% if not status_filter %}bg-indigo-600 text-white{% else %}bg-gray-800 text-gray-400 hover:text-white border border-gray-700{% endif %}">
+            Wszystkie
+        </a>
+        <a href="?status=pending"
+           class="px-4 py-1.5 rounded-full text-sm font-medium transition
+                  {% if status_filter == 'pending' %}bg-yellow-600 text-white{% else %}bg-gray-800 text-gray-400 hover:text-white border border-gray-700{% endif %}">
+            Oczekujące
+        </a>
+        <a href="?status=approved"
+           class="px-4 py-1.5 rounded-full text-sm font-medium transition
+                  {% if status_filter == 'approved' %}bg-emerald-600 text-white{% else %}bg-gray-800 text-gray-400 hover:text-white border border-gray-700{% endif %}">
+            Zatwierdzone
+        </a>
+        <a href="?status=rejected"
+           class="px-4 py-1.5 rounded-full text-sm font-medium transition
+                  {% if status_filter == 'rejected' %}bg-red-600 text-white{% else %}bg-gray-800 text-gray-400 hover:text-white border border-gray-700{% endif %}">
+            Odrzucone
+        </a>
+    </div>
+
+    {# Lista #}
+    {% if grouped %}
+        {% for group in grouped %}
+        <div class="mb-6">
+            <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+                <div class="flex items-center gap-3">
+                    <div class="w-7 h-7 rounded-full bg-indigo-900 flex items-center justify-center shrink-0">
+                        <span class="text-xs font-bold text-indigo-300">{{ group.user.username|first|upper }}</span>
+                    </div>
+                    <div>
+                        <span class="text-sm font-semibold text-gray-200">{{ group.user.get_full_name|default:group.user.username }}</span>
+                        <span class="text-xs text-gray-500 ml-2">{{ group.user.get_role_display }}</span>
+                    </div>
+                </div>
+                <div class="flex items-center gap-3 text-xs">
+                    {% if group.pending_h %}<span class="text-yellow-400 font-medium">{{ group.pending_h|floatformat:1 }} h oczekuje</span>{% endif %}
+                    {% if group.approved_h %}<span class="text-emerald-400 font-medium">{{ group.approved_h|floatformat:1 }} h zatwierdzono</span>{% endif %}
+                    {% if group.rejected_h %}<span class="text-red-400 font-medium">{{ group.rejected_h|floatformat:1 }} h odrzucono</span>{% endif %}
+                </div>
+            </div>
+
+            <div class="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="text-xs uppercase tracking-wider text-gray-600 border-b border-gray-800">
+                            <th class="text-left px-5 py-2.5 font-medium">Data</th>
+                            <th class="text-left px-5 py-2.5 font-medium">Zadanie</th>
+                            <th class="text-left px-5 py-2.5 font-medium">Godz.</th>
+                            <th class="text-left px-5 py-2.5 font-medium hidden lg:table-cell">Opis</th>
+                            <th class="text-left px-5 py-2.5 font-medium">Status</th>
+                            <th class="px-5 py-2.5 text-right font-medium">Akcje</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-800">
+                        {% for entry in group.entries %}
+                        {% with status=entry.approval_status %}
+                        <tr class="hover:bg-gray-800/30 transition{% if status == 'rejected' %} bg-red-950/10{% endif %}">
+                            <td class="px-5 py-3 text-gray-300 whitespace-nowrap">{{ entry.date|date:"d.m.Y" }}</td>
+                            <td class="px-5 py-3 text-gray-300">{{ entry.task.title|default:"—" }}</td>
+                            <td class="px-5 py-3 font-semibold whitespace-nowrap
+                                {% if status == 'approved' %}text-emerald-400
+                                {% elif status == 'rejected' %}text-red-400
+                                {% else %}text-yellow-400{% endif %}">
+                                {{ entry.hours|floatformat:1 }} h
+                            </td>
+                            <td class="px-5 py-3 hidden lg:table-cell">
+                                <div class="text-gray-500 max-w-xs truncate">{{ entry.description|truncatechars:55 }}</div>
+                                {% if status == 'rejected' and entry.rejection_reason %}
+                                <div class="text-red-400 text-xs mt-0.5 italic">Powód: {{ entry.rejection_reason|truncatechars:60 }}</div>
+                                {% endif %}
+                            </td>
+                            <td class="px-5 py-3">
+                                {% if status == 'approved' %}
+                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-emerald-900/60 text-emerald-300">
+                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                    Zatwierdzone
+                                </span>
+                                {% elif status == 'rejected' %}
+                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-red-900/60 text-red-300"
+                                      title="{{ entry.rejection_reason }}">
+                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                                    Odrzucone
+                                </span>
+                                {% else %}
+                                <span class="px-2 py-0.5 rounded-full text-xs bg-yellow-900/60 text-yellow-300">Oczekuje</span>
+                                {% endif %}
+                            </td>
+                            <td class="px-5 py-3 text-right">
+                                {% if status == 'approved' %}
+                                <form method="post" action="{% url 'timesheet_revoke_approval' entry.pk %}" class="inline">
+                                    {% csrf_token %}
+                                    <button type="submit" class="text-xs text-gray-500 hover:text-gray-300 transition cursor-pointer">Cofnij</button>
+                                </form>
+                                {% elif status == 'pending' %}
+                                <div class="flex items-center justify-end gap-3">
+                                    <form method="post" action="{% url 'timesheet_approve' entry.pk %}" class="inline">
+                                        {% csrf_token %}
+                                        <button type="submit" class="text-xs text-emerald-500 hover:text-emerald-300 font-medium transition cursor-pointer">Zatwierdź</button>
+                                    </form>
+                                    <a href="{% url 'timesheet_reject' entry.pk %}" class="text-xs text-red-500 hover:text-red-400 transition">Odrzuć</a>
+                                </div>
+                                {% else %}
+                                {# rejected — can approve directly #}
+                                <div class="flex items-center justify-end gap-3">
+                                    <form method="post" action="{% url 'timesheet_approve' entry.pk %}" class="inline">
+                                        {% csrf_token %}
+                                        <button type="submit" class="text-xs text-emerald-500 hover:text-emerald-300 font-medium transition cursor-pointer">Zatwierdź</button>
+                                    </form>
+                                </div>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endwith %}
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
+    <div class="bg-gray-900 border border-dashed border-gray-700 rounded-xl flex flex-col items-center justify-center py-16 text-center">
+        <svg class="w-10 h-10 text-gray-700 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+        <p class="text-gray-500 font-medium">Brak wpisów do wyświetlenia</p>
+        <p class="text-sm text-gray-600 mt-1">Zmień filtr lub poczekaj na wpisy od zespołu</p>
+    </div>
+    {% endif %}
+
+</main>
+{% endblock %}

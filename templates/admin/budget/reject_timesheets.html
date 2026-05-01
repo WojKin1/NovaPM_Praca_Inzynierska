@@ -1,0 +1,35 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block content %}
+<h1>Odrzuć wpisy czasu pracy</h1>
+
+<p>Odrzucasz <strong>{{ queryset.count }}</strong> wpis(ów). Podaj powód odrzucenia:</p>
+
+<ul>
+{% for obj in queryset %}
+    <li>{{ obj }}</li>
+{% endfor %}
+</ul>
+
+<form method="post">
+    {% csrf_token %}
+    {% for obj in queryset %}
+    <input type="hidden" name="{{ action_checkbox_name }}" value="{{ obj.pk }}">
+    {% endfor %}
+    <input type="hidden" name="action" value="reject_timesheets">
+    <input type="hidden" name="apply" value="1">
+
+    <p>
+        <label for="rejection_reason"><strong>Powód odrzucenia:</strong></label><br>
+        <textarea id="rejection_reason" name="rejection_reason" rows="4" cols="60" required
+                  style="margin-top: 6px;"></textarea>
+    </p>
+
+    <p>
+        <input type="submit" value="Odrzuć wpisy" class="button default">
+        &nbsp;
+        <a href="javascript:history.back()" class="button cancel-link">Anuluj</a>
+    </p>
+</form>
+{% endblock %}

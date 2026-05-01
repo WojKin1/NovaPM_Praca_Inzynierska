@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+
+{% block title %}Logowanie — NovaPM{% endblock %}
+
+{% block content %}
+<div class="min-h-screen flex items-center justify-center px-4">
+    <div class="w-full max-w-md">
+
+        <!-- Logo / nagłówek -->
+        <div class="text-center mb-10">
+            <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-indigo-600 mb-4 shadow-lg">
+                <svg class="w-9 h-9 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                </svg>
+            </div>
+            <h1 class="text-3xl font-bold tracking-tight text-white">NovaPM</h1>
+            <p class="mt-1 text-sm text-gray-400">System zarządzania projektami IT</p>
+        </div>
+
+        <!-- Karta formularza -->
+        <div class="bg-gray-900 border border-gray-800 rounded-2xl shadow-2xl p-8">
+            <h2 class="text-lg font-semibold text-gray-200 mb-6">Zaloguj się do systemu</h2>
+
+            <!-- Błędy non-field -->
+            {% if form.non_field_errors %}
+            <div class="mb-5 rounded-lg bg-red-900/40 border border-red-700 px-4 py-3">
+                {% for error in form.non_field_errors %}
+                <p class="text-sm text-red-300 flex items-center gap-2">
+                    <svg class="w-4 h-4 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm-1-9v4a1 1 0 102 0V9a1 1 0 10-2 0zm0-3a1 1 0 112 0 1 1 0 01-2 0z" clip-rule="evenodd"/>
+                    </svg>
+                    {{ error }}
+                </p>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <form method="post" novalidate>
+                {% csrf_token %}
+
+                <!-- Login -->
+                <div class="mb-4">
+                    <label for="{{ form.username.id_for_label }}"
+                           class="block text-sm font-medium text-gray-300 mb-1">
+                        Nazwa użytkownika
+                    </label>
+                    <input type="text"
+                           name="{{ form.username.html_name }}"
+                           id="{{ form.username.id_for_label }}"
+                           value="{{ form.username.value|default:'' }}"
+                           autocomplete="username"
+                           autofocus
+                           class="w-full rounded-lg bg-gray-800 border {% if form.username.errors %}border-red-500{% else %}border-gray-700{% endif %}
+                                  px-4 py-2.5 text-sm text-gray-100 placeholder-gray-500
+                                  focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent
+                                  transition">
+                    {% for error in form.username.errors %}
+                    <p class="mt-1 text-xs text-red-400">{{ error }}</p>
+                    {% endfor %}
+                </div>
+
+                <!-- Hasło -->
+                <div class="mb-6">
+                    <label for="{{ form.password.id_for_label }}"
+                           class="block text-sm font-medium text-gray-300 mb-1">
+                        Hasło
+                    </label>
+                    <input type="password"
+                           name="{{ form.password.html_name }}"
+                           id="{{ form.password.id_for_label }}"
+                           autocomplete="current-password"
+                           class="w-full rounded-lg bg-gray-800 border {% if form.password.errors %}border-red-500{% else %}border-gray-700{% endif %}
+                                  px-4 py-2.5 text-sm text-gray-100 placeholder-gray-500
+                                  focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent
+                                  transition">
+                    {% for error in form.password.errors %}
+                    <p class="mt-1 text-xs text-red-400">{{ error }}</p>
+                    {% endfor %}
+                </div>
+
+                <!-- Przycisk -->
+                <button type="submit"
+                        class="w-full rounded-lg bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700
+                               px-4 py-2.5 text-sm font-semibold text-white
+                               focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-900
+                               transition cursor-pointer">
+                    Zaloguj się
+                </button>
+
+                <div class="mt-4 text-center">
+                    <a href="{% url 'password_reset' %}"
+                       class="text-xs text-gray-500 hover:text-gray-300 transition">
+                        Nie pamiętam hasła
+                    </a>
+                </div>
+            </form>
+        </div>
+
+        <p class="mt-6 text-center text-xs text-gray-600">&copy; 2025 NovaPM</p>
+    </div>
+</div>
+{% endblock %}

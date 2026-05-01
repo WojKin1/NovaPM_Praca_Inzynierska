@@ -1,0 +1,471 @@
+{% extends "base.html" %}
+
+{% block title %}{{ project.name }} — NovaPM{% endblock %}
+
+{% block content %}
+
+{# ── Navbar ── #}
+<nav class="bg-gray-900 border-b border-gray-800 px-6 py-3 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+        <div class="flex items-center justify-center w-8 h-8 rounded-lg bg-indigo-600">
+            <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+            </svg>
+        </div>
+        <span class="font-bold text-white text-lg tracking-tight">NovaPM</span>
+        {% if request.user.role == 'ANALYST' %}
+        <div class="hidden sm:flex items-center gap-1 text-sm ml-2">
+            <a href="{% url 'my_requirements_projects' %}" class="px-3 py-1 rounded-md text-amber-400 hover:text-white hover:bg-gray-800 transition">Moje projekty</a>
+            <a href="{% url 'my_timesheet' %}" class="px-3 py-1 rounded-md text-gray-400 hover:text-white hover:bg-gray-800 transition">Timesheet</a>
+        </div>
+        {% elif request.user.role == 'DEVELOPER' or request.user.role == 'TESTER' %}
+        <div class="hidden sm:flex items-center gap-1 text-sm ml-2">
+            <a href="{% url 'my_tasks' %}" class="px-3 py-1 rounded-md text-gray-400 hover:text-white hover:bg-gray-800 transition">Moje zadania</a>
+            <a href="{% url 'my_timesheet' %}" class="px-3 py-1 rounded-md text-gray-400 hover:text-white hover:bg-gray-800 transition">Timesheet</a>
+        </div>
+        {% elif request.user.role == 'PM' or request.user.is_staff %}
+        <div class="hidden sm:flex items-center gap-1 text-sm ml-2">
+            <a href="{% url 'project_list' %}" class="px-3 py-1 rounded-md text-gray-400 hover:text-white hover:bg-gray-800 transition">Projekty</a>
+            <a href="{% url 'my_timesheet' %}" class="px-3 py-1 rounded-md text-gray-400 hover:text-white hover:bg-gray-800 transition">Timesheet</a>
+        </div>
+        {% endif %}
+    </div>
+    <div class="flex items-center gap-4">
+        <div class="text-right hidden sm:block">
+            <p class="text-sm font-medium text-gray-200">{{ request.user.get_full_name|default:request.user.username }}</p>
+            <p class="text-xs {% if request.user.role == 'ANALYST' %}text-amber-400{% else %}text-indigo-400{% endif %}">{{ request.user.get_role_display }}</p>
+        </div>
+        <a href="{% url 'user_profile' %}"
+           class="text-xs text-gray-500 hover:text-gray-300 transition">Mój profil</a>
+        <form method="post" action="{% url 'logout' %}">
+            {% csrf_token %}
+            <button type="submit"
+                    class="rounded-lg bg-gray-800 hover:bg-gray-700 border border-gray-700 px-3 py-1.5 text-xs font-medium text-gray-300 transition cursor-pointer">
+                Wyloguj
+            </button>
+        </form>
+    </div>
+</nav>
+
+<main class="max-w-7xl mx-auto px-6 py-8">
+
+    {# ── Breadcrumb + powrót ── #}
+    <div class="flex items-center gap-3 mb-6">
+        <a href="{% if request.user.role == 'ANALYST' %}{% url 'my_requirements_projects' %}{% else %}{% url 'project_list' %}{% endif %}"
+           class="inline-flex items-center gap-1.5 text-sm text-gray-400 hover:text-indigo-400 transition">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+            </svg>
+            {% if request.user.role == 'ANALYST' %}Wróć do wymagań{% else %}Wróć do projektów{% endif %}
+        </a>
+    </div>
+
+    {# ── Nagłówek projektu ── #}
+    <div class="bg-gray-900 border border-gray-800 rounded-xl px-6 py-5 mb-6">
+        <div class="flex flex-wrap items-start justify-between gap-4">
+            <div>
+                <div class="flex flex-wrap items-center gap-2 mb-1">
+                    {# Status badge #}
+                    {% if project.status == 'INITIATION' %}
+                        <span class="px-2 py-0.5 rounded-full text-xs font-medium bg-gray-700 text-gray-300">Inicjacja</span>
+                    {% elif project.status == 'PLANNING' %}
+                        <span class="px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-900/60 text-yellow-300">Planowanie</span>
+                    {% elif project.status == 'EXECUTION' %}
+                        <span class="px-2 py-0.5 rounded-full text-xs font-medium bg-blue-900/60 text-blue-300">Realizacja</span>
+                    {% elif project.status == 'MONITORING' %}
+                        <span class="px-2 py-0.5 rounded-full text-xs font-medium bg-purple-900/60 text-purple-300">Monitorowanie</span>
+                    {% elif project.status == 'CLOSED' %}
+                        <span class="px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-900/60 text-emerald-300">Zamknięty</span>
+                    {% endif %}
+                    {# Priority badge #}
+                    {% if project.priority == 'LOW' %}
+                        <span class="px-2 py-0.5 rounded-full text-xs font-medium bg-gray-700 text-gray-400">Niski</span>
+                    {% elif project.priority == 'MEDIUM' %}
+                        <span class="px-2 py-0.5 rounded-full text-xs font-medium bg-teal-900/60 text-teal-300">Średni</span>
+                    {% elif project.priority == 'HIGH' %}
+                        <span class="px-2 py-0.5 rounded-full text-xs font-medium bg-orange-900/60 text-orange-300">Wysoki</span>
+                    {% elif project.priority == 'CRITICAL' %}
+                        <span class="px-2 py-0.5 rounded-full text-xs font-medium bg-red-900/60 text-red-300">Krytyczny</span>
+                    {% endif %}
+                    {# Przycisk edycji — tylko PM/staff #}
+                    {% if is_pm_or_staff %}
+                    <a href="{% url 'project_edit' project.pk %}"
+                       class="inline-flex items-center gap-1 rounded-md bg-gray-800 hover:bg-gray-700 border border-gray-700
+                              px-2 py-0.5 text-xs font-medium text-gray-400 hover:text-gray-200 transition"
+                       title="Edytuj projekt">
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                        </svg>
+                        Edytuj
+                    </a>
+                    {% endif %}
+                    {# Link do Kanbanu — dla nie-analityków #}
+                    {% if is_member and request.user.role != 'ANALYST' %}
+                    <a href="{% url 'project_tasks' project.pk %}"
+                       class="inline-flex items-center gap-1 rounded-md bg-gray-800 hover:bg-gray-700 border border-gray-700
+                              px-2 py-0.5 text-xs font-medium text-gray-400 hover:text-gray-200 transition"
+                       title="Tablica Kanban projektu">
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 0v10m0-10a2 2 0 012 2h2a2 2 0 012-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"/>
+                        </svg>
+                        Zadania projektu
+                    </a>
+                    {% endif %}
+                </div>
+                <h1 class="text-2xl font-bold text-white">{{ project.name }}</h1>
+                <p class="text-sm text-gray-400 mt-0.5">Klient: <span class="text-gray-300">{{ project.client_name }}</span></p>
+
+                {# Quick-action zmiany statusu — tylko PM/staff, tylko gdy nie CLOSED #}
+                {% if is_pm_or_staff %}
+                {% if project.status != 'CLOSED' %}
+                <div class="mt-3">
+                    <form method="post" action="{% url 'project_change_status' project.pk %}" class="inline">
+                        {% csrf_token %}
+                        <button type="submit"
+                                class="inline-flex items-center gap-1.5 rounded-lg border border-dashed
+                                       px-3 py-1.5 text-xs font-medium transition cursor-pointer
+                                       {% if project.status == 'MONITORING' %}
+                                           border-emerald-700 text-emerald-400 hover:bg-emerald-900/20
+                                       {% else %}
+                                           border-indigo-700 text-indigo-400 hover:bg-indigo-900/20
+                                       {% endif %}">
+                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
+                            </svg>
+                            {% if project.status == 'INITIATION' %}Przejdź do Planowania
+                            {% elif project.status == 'PLANNING' %}Przejdź do Realizacji
+                            {% elif project.status == 'EXECUTION' %}Przejdź do Monitorowania
+                            {% elif project.status == 'MONITORING' %}Zamknij projekt
+                            {% endif %}
+                        </button>
+                    </form>
+                </div>
+                {% endif %}
+                {% endif %}
+            </div>
+            <div class="text-right">
+                {% if days_left < 0 %}
+                    <p class="text-2xl font-bold text-red-400">{{ days_left|cut:"-" }} dni opóźnienia</p>
+                {% elif days_left == 0 %}
+                    <p class="text-2xl font-bold text-yellow-400">Termin dzisiaj</p>
+                {% else %}
+                    <p class="text-2xl font-bold text-gray-200">{{ days_left }} dni</p>
+                {% endif %}
+                <p class="text-xs text-gray-500">do terminu ({{ project.end_date|date:"d.m.Y" }})</p>
+            </div>
+        </div>
+    </div>
+
+    {# ── Siatka 2 kolumny ── #}
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+        {# ════════════ LEWA (2/3) ════════════ #}
+        <div class="lg:col-span-2 flex flex-col gap-6">
+
+            {# Informacje ogólne #}
+            <section class="bg-gray-900 border border-gray-800 rounded-xl p-5">
+                <h2 class="text-sm font-semibold uppercase tracking-wider text-gray-500 mb-4">Informacje ogólne</h2>
+                <div class="grid grid-cols-2 gap-4 mb-4 text-sm">
+                    <div>
+                        <p class="text-gray-500 text-xs mb-0.5">Data rozpoczęcia</p>
+                        <p class="text-gray-200">{{ project.start_date|date:"d.m.Y" }}</p>
+                    </div>
+                    <div>
+                        <p class="text-gray-500 text-xs mb-0.5">Data zakończenia</p>
+                        <p class="{% if days_left < 0 and project.status != 'CLOSED' %}text-red-400{% else %}text-gray-200{% endif %}">
+                            {{ project.end_date|date:"d.m.Y" }}
+                        </p>
+                    </div>
+                </div>
+
+                {# Budżet — pasek dla wszystkich członków, link szczegółów tylko PM/staff #}
+                {% if is_member %}
+                <div class="mb-4">
+                    <div class="flex justify-between text-xs text-gray-500 mb-1">
+                        <span>Budżet: <span class="text-gray-300">{{ project.budget_spent|floatformat:0 }} zł</span> / {{ project.budget_planned|floatformat:0 }} zł</span>
+                        <span class="{% if budget_over %}text-red-400{% else %}text-gray-400{% endif %}">{{ budget_pct_raw }}%</span>
+                    </div>
+                    <div class="w-full h-2 rounded-full bg-gray-800">
+                        <div class="h-2 rounded-full transition-all {% if budget_over %}bg-red-500{% else %}bg-indigo-500{% endif %}"
+                             style="width: {{ budget_pct }}%"></div>
+                    </div>
+                    {% if budget_over %}
+                    <p class="text-xs text-red-400 mt-1">⚠ Przekroczenie budżetu o {{ project.budget_spent|add:"-"|add:project.budget_planned|floatformat:0 }} zł</p>
+                    {% endif %}
+                    {% if is_pm_or_staff %}
+                    <a href="{% url 'project_budget' project.pk %}" class="inline-block text-xs text-indigo-400 hover:text-indigo-300 transition mt-1">Szczegóły budżetu →</a>
+                    {% endif %}
+                </div>
+                {% endif %}
+
+                {% if project.description %}
+                <div>
+                    <p class="text-xs text-gray-500 mb-1">Opis projektu</p>
+                    <p class="text-sm text-gray-300 leading-relaxed">{{ project.description }}</p>
+                </div>
+                {% endif %}
+            </section>
+
+            {# Postęp zadań #}
+            <section class="bg-gray-900 border border-gray-800 rounded-xl p-5">
+                <div class="flex items-start justify-between flex-wrap gap-3 mb-4">
+                    <div class="flex items-center gap-3">
+                        <h2 class="text-sm font-semibold uppercase tracking-wider text-gray-500">Postęp zadań</h2>
+                        <span class="text-sm text-gray-400">{{ task_done }}/{{ task_total }} ukończonych</span>
+                    </div>
+                    <div class="flex flex-col items-end gap-2">
+                        {# Rząd 1: zarządzanie — PM/staff #}
+                        {% if is_pm_or_staff %}
+                        <div class="flex flex-wrap gap-1.5">
+                            <a href="{% url 'project_tasks' project.pk %}" class="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 px-3 py-1.5 text-xs font-semibold text-white transition">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 0v10m0-10a2 2 0 012 2h2a2 2 0 012-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"/></svg>
+                                Zarządzaj zadaniami
+                            </a>
+                            <a href="{% url 'project_timesheet' project.pk %}" class="inline-flex items-center gap-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white transition">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                Zatwierdź godziny
+                            </a>
+                            <a href="{% url 'project_budget' project.pk %}" class="inline-flex items-center gap-1.5 rounded-lg bg-gray-700 hover:bg-gray-600 border border-gray-600 px-3 py-1.5 text-xs font-semibold text-gray-200 transition">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                Budżet
+                            </a>
+                            <a href="{% url 'pm_project_report' project.pk %}" class="inline-flex items-center gap-1.5 rounded-lg bg-gray-600 hover:bg-gray-500 border border-gray-500 px-3 py-1.5 text-xs font-semibold text-gray-200 transition">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                                Raport PDF
+                            </a>
+                        </div>
+                        {% endif %}
+                        {# Rząd 2: moduły — wszyscy członkowie #}
+                        {% if is_member %}
+                        <div class="flex flex-wrap gap-1.5">
+                            <a href="{% url 'risk_list' project_pk=project.pk %}" class="inline-flex items-center gap-1 rounded-md bg-gray-800 hover:bg-gray-700 border border-gray-700 px-2.5 py-1 text-xs font-medium text-gray-300 transition">
+                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
+                                Ryzyka
+                            </a>
+                            <a href="{% url 'cr_list' project_pk=project.pk %}" class="inline-flex items-center gap-1 rounded-md bg-gray-800 hover:bg-gray-700 border border-gray-700 px-2.5 py-1 text-xs font-medium text-gray-300 transition">
+                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                                Wnioski
+                            </a>
+                            <a href="{% url 'project_requirements' project_pk=project.pk %}" class="inline-flex items-center gap-1 rounded-md bg-gray-800 hover:bg-gray-700 border border-gray-700 px-2.5 py-1 text-xs font-medium text-gray-300 transition">
+                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+                                Wymagania
+                            </a>
+                            <a href="{% url 'project_wbs' project_pk=project.pk %}" class="inline-flex items-center gap-1 rounded-md bg-gray-800 hover:bg-gray-700 border border-gray-700 px-2.5 py-1 text-xs font-medium text-gray-300 transition">
+                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"/></svg>
+                                WBS
+                            </a>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="w-full h-2 rounded-full bg-gray-800 mb-4">
+                    <div class="h-2 rounded-full bg-emerald-500 transition-all" style="width: {{ task_pct }}%"></div>
+                </div>
+                <div class="grid grid-cols-5 gap-2">
+                    {% with counts=task_counts %}
+                    <div class="bg-gray-800 rounded-lg p-3 text-center">
+                        <p class="text-lg font-bold text-gray-300">{{ counts.TODO }}</p>
+                        <p class="text-xs text-gray-500 mt-0.5">Do zrobienia</p>
+                    </div>
+                    <div class="bg-blue-900/30 rounded-lg p-3 text-center">
+                        <p class="text-lg font-bold text-blue-400">{{ counts.IN_PROGRESS }}</p>
+                        <p class="text-xs text-gray-500 mt-0.5">W trakcie</p>
+                    </div>
+                    <div class="bg-purple-900/30 rounded-lg p-3 text-center">
+                        <p class="text-lg font-bold text-purple-400">{{ counts.IN_REVIEW }}</p>
+                        <p class="text-xs text-gray-500 mt-0.5">W przeglądzie</p>
+                    </div>
+                    <div class="bg-emerald-900/30 rounded-lg p-3 text-center">
+                        <p class="text-lg font-bold text-emerald-400">{{ counts.DONE }}</p>
+                        <p class="text-xs text-gray-500 mt-0.5">Ukończone</p>
+                    </div>
+                    <div class="bg-red-900/30 rounded-lg p-3 text-center">
+                        <p class="text-lg font-bold text-red-400">{{ counts.BLOCKED }}</p>
+                        <p class="text-xs text-gray-500 mt-0.5">Zablokowane</p>
+                    </div>
+                    {% endwith %}
+                </div>
+            </section>
+
+            {# Ostatnie zadania #}
+            <section class="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
+                <div class="px-5 py-4 border-b border-gray-800">
+                    <h2 class="text-sm font-semibold uppercase tracking-wider text-gray-500">Ostatnie zadania</h2>
+                </div>
+                {% if recent_tasks %}
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="text-xs uppercase tracking-wider text-gray-600 border-b border-gray-800">
+                            <th class="text-left px-5 py-2.5 font-medium">Tytuł</th>
+                            <th class="text-left px-5 py-2.5 font-medium hidden sm:table-cell">Przypisane do</th>
+                            <th class="text-left px-5 py-2.5 font-medium">Status</th>
+                            <th class="text-left px-5 py-2.5 font-medium hidden md:table-cell">Termin</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-800">
+                        {% for task in recent_tasks %}
+                        <tr class="hover:bg-gray-800/40 transition">
+                            <td class="px-5 py-3 text-gray-200"><a href="{% url 'task_edit' pk=task.pk %}" class="hover:text-indigo-400 transition">{{ task.title }}</a></td>
+                            <td class="px-5 py-3 text-gray-400 hidden sm:table-cell">
+                                {{ task.assigned_to.username|default:"—" }}
+                            </td>
+                            <td class="px-5 py-3">
+                                {% if task.status == 'TODO' %}
+                                    <span class="px-2 py-0.5 rounded-full text-xs bg-gray-700 text-gray-300">Do zrobienia</span>
+                                {% elif task.status == 'IN_PROGRESS' %}
+                                    <span class="px-2 py-0.5 rounded-full text-xs bg-blue-900/60 text-blue-300">W trakcie</span>
+                                {% elif task.status == 'IN_REVIEW' %}
+                                    <span class="px-2 py-0.5 rounded-full text-xs bg-purple-900/60 text-purple-300">W przeglądzie</span>
+                                {% elif task.status == 'DONE' %}
+                                    <span class="px-2 py-0.5 rounded-full text-xs bg-emerald-900/60 text-emerald-300">Ukończone</span>
+                                {% elif task.status == 'BLOCKED' %}
+                                    <span class="px-2 py-0.5 rounded-full text-xs bg-red-900/60 text-red-300">Zablokowane</span>
+                                {% endif %}
+                            </td>
+                            <td class="px-5 py-3 text-gray-400 hidden md:table-cell">
+                                {{ task.due_date|date:"d.m.Y" }}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <p class="px-5 py-8 text-center text-gray-600">Brak zadań w tym projekcie.</p>
+                {% endif %}
+            </section>
+
+        </div>{# end lewa #}
+
+        {# ════════════ PRAWA (1/3) ════════════ #}
+        <div class="flex flex-col gap-6">
+
+            {# Zespół #}
+            <section class="bg-gray-900 border border-gray-800 rounded-xl p-5">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-sm font-semibold uppercase tracking-wider text-gray-500">
+                        Zespół
+                        {% if members %}<span class="ml-1 text-gray-600">({{ members|length }})</span>{% endif %}
+                    </h2>
+                    {% if request.user == project.project_manager or request.user.is_staff %}
+                    <a href="{% url 'member_add' project_pk=project.pk %}"
+                       class="inline-flex items-center gap-1 rounded-md bg-gray-800 hover:bg-gray-700 border border-gray-700
+                              px-2.5 py-1 text-xs font-medium text-gray-300 transition">
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                        </svg>
+                        Dodaj
+                    </a>
+                    {% endif %}
+                </div>
+                {% if members %}
+                <ul class="space-y-3">
+                    {% for m in members %}
+                    <li class="flex items-center justify-between text-sm gap-2">
+                        <div class="min-w-0">
+                            <p class="text-gray-200 font-medium truncate">{{ m.user.get_full_name|default:m.user.username }}</p>
+                            <p class="text-xs text-gray-500">{{ m.get_role_in_project_display }}</p>
+                        </div>
+                        <div class="flex items-center gap-2 shrink-0">
+                            <span class="text-xs text-gray-400 bg-gray-800 rounded px-2 py-0.5">{{ m.availability_percent }}%</span>
+                            {% if request.user == project.project_manager or request.user.is_staff %}
+                            <form method="post"
+                                  action="{% url 'member_remove' project_pk=project.pk member_pk=m.pk %}"
+                                  onsubmit="return confirm('Usunąć {{ m.user.username }} z zespołu?')">
+                                {% csrf_token %}
+                                <button type="submit"
+                                        class="rounded px-1.5 py-0.5 text-xs text-gray-600 hover:text-red-400 hover:bg-red-900/20
+                                               transition cursor-pointer" title="Usuń z zespołu">
+                                    Usuń
+                                </button>
+                            </form>
+                            {% endif %}
+                        </div>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <p class="text-sm text-gray-600">Brak członków zespołu.</p>
+                {% endif %}
+            </section>
+
+            {# Ryzyka #}
+            <section class="bg-gray-900 border border-gray-800 rounded-xl p-5">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-sm font-semibold uppercase tracking-wider text-gray-500">
+                        Aktywne ryzyka
+                        {% if active_risks %}<span class="ml-1 text-gray-600">({{ active_risks|length }})</span>{% endif %}
+                    </h2>
+                    <a href="{% url 'risk_list' project_pk=project.pk %}"
+                       class="text-xs text-indigo-400 hover:text-indigo-300 transition">
+                        Zobacz wszystkie →
+                    </a>
+                </div>
+                {% if active_risks %}
+                <ul class="space-y-3">
+                    {% for risk in active_risks %}
+                    {% with level=risk.risk_level %}
+                    <li class="text-sm border-l-2 pl-3
+                               {% if level > 12 %}border-red-500{% elif level > 6 %}border-yellow-500{% else %}border-gray-600{% endif %}">
+                        <div class="flex items-start justify-between gap-2">
+                            <p class="text-gray-200">{{ risk.title }}</p>
+                            <span class="shrink-0 text-xs font-bold rounded px-1.5 py-0.5
+                                         {% if level > 12 %}bg-red-900/60 text-red-300
+                                         {% elif level > 6 %}bg-yellow-900/60 text-yellow-300
+                                         {% else %}bg-gray-700 text-gray-400{% endif %}">
+                                {{ level }}
+                            </span>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-0.5">{{ risk.get_status_display }} · {{ risk.owner.username }}</p>
+                    </li>
+                    {% endwith %}
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <p class="text-sm text-gray-600">Brak aktywnych ryzyk.</p>
+                {% endif %}
+            </section>
+
+            {# Wnioski o zmianę #}
+            <section class="bg-gray-900 border border-gray-800 rounded-xl p-5">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-sm font-semibold uppercase tracking-wider text-gray-500">
+                        Otwarte zmiany
+                        {% if open_crs %}<span class="ml-1 text-gray-600">({{ open_crs|length }})</span>{% endif %}
+                    </h2>
+                    <a href="{% url 'cr_list' project_pk=project.pk %}"
+                       class="text-xs text-indigo-400 hover:text-indigo-300 transition">
+                        Zobacz wszystkie →
+                    </a>
+                </div>
+                {% if open_crs %}
+                <ul class="space-y-3">
+                    {% for cr in open_crs %}
+                    <li class="text-sm">
+                        <a href="{% url 'cr_detail' project_pk=project.pk pk=cr.pk %}"
+                           class="text-gray-200 hover:text-indigo-400 transition font-medium">{{ cr.title }}</a>
+                        <div class="flex items-center gap-2 mt-0.5">
+                            {% if cr.status == 'DRAFT' %}
+                                <span class="text-xs bg-gray-700 text-gray-400 rounded-full px-2 py-0.5">Szkic</span>
+                            {% elif cr.status == 'SUBMITTED' %}
+                                <span class="text-xs bg-blue-900/60 text-blue-300 rounded-full px-2 py-0.5">Złożony</span>
+                            {% elif cr.status == 'ANALYSED' %}
+                                <span class="text-xs bg-yellow-900/60 text-yellow-300 rounded-full px-2 py-0.5">Analizowany</span>
+                            {% endif %}
+                            <span class="text-xs text-gray-600">{{ cr.requested_by.username }}</span>
+                        </div>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <p class="text-sm text-gray-600">Brak otwartych wniosków.</p>
+                {% endif %}
+            </section>
+
+        </div>{# end prawa #}
+    </div>{# end grid #}
+
+</main>
+{% endblock %}

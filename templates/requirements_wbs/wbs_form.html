@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+{% block title %}{% if element %}Edytuj element WBS{% else %}Nowy element WBS{% endif %} — {{ project.name }} — NovaPM{% endblock %}
+
+{% block content %}
+<nav class="bg-gray-900 border-b border-gray-800 px-6 py-3 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+        <div class="flex items-center justify-center w-8 h-8 rounded-lg {% if is_pm_or_staff %}bg-indigo-600{% else %}bg-amber-600{% endif %}">
+            <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"/>
+            </svg>
+        </div>
+        <span class="font-bold text-white text-lg tracking-tight">NovaPM</span>
+        {% if not is_pm_or_staff %}
+        <div class="hidden sm:flex items-center gap-1 text-sm ml-2">
+            <a href="{% url 'my_requirements_projects' %}" class="px-3 py-1 rounded-md text-amber-400 hover:text-white hover:bg-gray-800 transition">Moje projekty</a>
+        </div>
+        {% endif %}
+    </div>
+    <div class="flex items-center gap-4">
+        <div class="text-right hidden sm:block">
+            <p class="text-sm font-medium text-gray-200">{{ request.user.get_full_name|default:request.user.username }}</p>
+            <p class="text-xs {% if is_pm_or_staff %}text-indigo-400{% else %}text-amber-400{% endif %}">{{ request.user.get_role_display }}</p>
+        </div>
+        <a href="{% url 'user_profile' %}"
+           class="text-xs text-gray-500 hover:text-gray-300 transition">Mój profil</a>
+        <form method="post" action="{% url 'logout' %}">{% csrf_token %}
+            <button type="submit" class="rounded-lg bg-gray-800 hover:bg-gray-700 border border-gray-700 px-3 py-1.5 text-xs font-medium text-gray-300 transition cursor-pointer">Wyloguj</button>
+        </form>
+    </div>
+</nav>
+
+<main class="max-w-2xl mx-auto px-6 py-8">
+
+    <div class="mb-6">
+        <a href="{% url 'project_wbs' project_pk=project.pk %}" class="inline-flex items-center gap-1.5 text-sm text-gray-400 hover:text-amber-400 transition">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+            Wróć do WBS
+        </a>
+    </div>
+
+    <div class="mb-6">
+        <h1 class="text-2xl font-bold text-white">
+            {% if element %}Edytuj element WBS{% else %}Nowy element WBS{% endif %}
+        </h1>
+        <p class="text-sm text-gray-400 mt-0.5">Projekt: <span class="text-amber-400">{{ project.name }}</span></p>
+    </div>
+
+    {% if preset_parent %}
+    <div class="mb-4 flex items-center gap-2 rounded-lg bg-amber-900/20 border border-amber-800/40 px-4 py-2.5">
+        <svg class="w-4 h-4 text-amber-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+        </svg>
+        <p class="text-sm text-amber-300">Element nadrzędny: <strong class="font-mono">{{ preset_parent.code }}</strong> {{ preset_parent.name }}</p>
+    </div>
+    {% endif %}
+
+    <div class="mb-4 flex items-center gap-2 rounded-lg bg-gray-800/60 border border-gray-700/60 px-4 py-2.5">
+        <svg class="w-4 h-4 text-gray-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+        <p class="text-xs text-gray-400">Kod elementu (np. <span class="font-mono text-amber-400">1.2.3</span>) zostanie wygenerowany automatycznie na podstawie pozycji w strukturze.</p>
+    </div>
+
+    <form method="post" novalidate>
+        {% csrf_token %}
+        <div class="bg-gray-900 border border-gray-800 rounded-xl p-6 flex flex-col gap-5">
+
+            <div>
+                <label for="{{ form.name.id_for_label }}" class="block text-sm font-medium text-gray-300 mb-1">
+                    {{ form.name.label }} <span class="text-red-500">*</span>
+                </label>
+                {{ form.name }}
+                {% for e in form.name.errors %}<p class="mt-1 text-xs text-red-400">{{ e }}</p>{% endfor %}
+            </div>
+
+            <div>
+                <label for="{{ form.description.id_for_label }}" class="block text-sm font-medium text-gray-300 mb-1">
+                    {{ form.description.label }}
+                </label>
+                {{ form.description }}
+                {% for e in form.description.errors %}<p class="mt-1 text-xs text-red-400">{{ e }}</p>{% endfor %}
+            </div>
+
+            <div>
+                <label for="{{ form.parent.id_for_label }}" class="block text-sm font-medium text-gray-300 mb-1">
+                    {{ form.parent.label }}
+                </label>
+                {{ form.parent }}
+                <p class="mt-1 text-xs text-gray-600">Pozostaw puste aby dodać element główny (poziom 1).</p>
+                {% for e in form.parent.errors %}<p class="mt-1 text-xs text-red-400">{{ e }}</p>{% endfor %}
+            </div>
+
+            {% if form.non_field_errors %}
+            <div class="rounded-lg bg-red-900/40 border border-red-700 px-4 py-3">
+                {% for e in form.non_field_errors %}<p class="text-sm text-red-300">{{ e }}</p>{% endfor %}
+            </div>
+            {% endif %}
+
+            <div class="flex justify-end gap-3 pt-2 border-t border-gray-800">
+                <a href="{% url 'project_wbs' project_pk=project.pk %}"
+                   class="rounded-lg bg-gray-800 hover:bg-gray-700 border border-gray-700 px-5 py-2.5 text-sm font-medium text-gray-300 transition">
+                    Anuluj
+                </a>
+                <button type="submit"
+                        class="inline-flex items-center gap-2 rounded-lg bg-amber-600 hover:bg-amber-500 px-5 py-2.5 text-sm font-semibold text-white transition cursor-pointer">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                    {% if element %}Zapisz zmiany{% else %}Dodaj element{% endif %}
+                </button>
+            </div>
+        </div>
+    </form>
+
+</main>
+{% endblock %}

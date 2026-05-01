@@ -1,0 +1,17 @@
+{% extends "admin/base.html" %}
+{% block branding %}
+<div id="site-name">
+    <a href="{% url 'admin:index' %}">Panel administracyjny NovaPM</a>
+</div>
+{% endblock %}
+{% block userlinks %}
+{% if user.is_active and user.is_staff %}
+<a href="{% url 'admin:password_change' %}">Zmień hasło</a> /
+<form method="post" action="{% url 'logout' %}" style="display:inline">
+    {% csrf_token %}
+    <button type="submit" style="background:none;border:none;color:inherit;cursor:pointer;font-size:inherit;padding:0;">
+        Wyloguj
+    </button>
+</form>
+{% endif %}
+{% endblock %}

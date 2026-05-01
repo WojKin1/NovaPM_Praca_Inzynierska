@@ -1,0 +1,210 @@
+{% extends "base.html" %}
+{% block title %}Budżet — {{ project.name }} — NovaPM{% endblock %}
+
+{% block content %}
+<nav class="bg-gray-900 border-b border-gray-800 px-6 py-3 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+        <div class="flex items-center justify-center w-8 h-8 rounded-lg bg-indigo-600">
+            <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+            </svg>
+        </div>
+        <span class="font-bold text-white text-lg tracking-tight">NovaPM</span>
+    </div>
+    <div class="flex items-center gap-4">
+        <div class="text-right hidden sm:block">
+            <p class="text-sm font-medium text-gray-200">{{ request.user.get_full_name|default:request.user.username }}</p>
+            <p class="text-xs text-indigo-400">{{ request.user.get_role_display }}</p>
+        </div>
+        <a href="{% url 'user_profile' %}"
+           class="text-xs text-gray-500 hover:text-gray-300 transition">Mój profil</a>
+        <form method="post" action="{% url 'logout' %}">{% csrf_token %}
+            <button type="submit" class="rounded-lg bg-gray-800 hover:bg-gray-700 border border-gray-700 px-3 py-1.5 text-xs font-medium text-gray-300 transition cursor-pointer">Wyloguj</button>
+        </form>
+    </div>
+</nav>
+
+<main class="max-w-6xl mx-auto px-6 py-8">
+
+    <div class="mb-4">
+        <a href="{% url 'project_detail' project.pk %}" class="inline-flex items-center gap-1.5 text-sm text-gray-400 hover:text-indigo-400 transition">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+            Wróć do projektu
+        </a>
+    </div>
+
+    <div class="flex flex-wrap items-center justify-between gap-4 mb-8">
+        <div>
+            <h1 class="text-2xl font-bold text-white">Budżet projektu</h1>
+            <p class="text-sm text-gray-400 mt-0.5">{{ project.name }}</p>
+        </div>
+    </div>
+
+    {# Alert przekroczenia #}
+    {% if stats.over %}
+    <div class="mb-6 flex items-center gap-3 rounded-xl bg-red-900/30 border border-red-700 px-5 py-4">
+        <svg class="w-5 h-5 text-red-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+        </svg>
+        <p class="text-sm text-red-300 font-medium">Przekroczenie budżetu o {{ stats.spent|add:"-"|floatformat:0 }} zł (łącznie wydano {{ stats.spent|floatformat:0 }} zł przy planie {{ stats.planned|floatformat:0 }} zł)</p>
+    </div>
+    {% endif %}
+
+    {# 4 karty statystyk #}
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <div class="bg-gray-900 border border-gray-800 rounded-xl p-5">
+            <p class="text-xs uppercase tracking-widest text-gray-500 mb-1">Planowano</p>
+            <p class="text-2xl font-bold text-white">{{ stats.planned|floatformat:0 }} <span class="text-sm text-gray-500">zł</span></p>
+        </div>
+        <div class="bg-gray-900 border border-gray-800 rounded-xl p-5">
+            <p class="text-xs uppercase tracking-widest text-gray-500 mb-1">Wydano</p>
+            <p class="text-2xl font-bold {% if stats.over %}text-red-400{% else %}text-indigo-400{% endif %}">{{ stats.spent|floatformat:0 }} <span class="text-sm text-gray-500">zł</span></p>
+        </div>
+        <div class="bg-gray-900 border border-gray-800 rounded-xl p-5">
+            <p class="text-xs uppercase tracking-widest text-gray-500 mb-1">Pozostało</p>
+            <p class="text-2xl font-bold {% if stats.remaining < 0 %}text-red-400{% else %}text-emerald-400{% endif %}">{{ stats.remaining|floatformat:0 }} <span class="text-sm text-gray-500">zł</span></p>
+        </div>
+        <div class="bg-gray-900 border border-gray-800 rounded-xl p-5">
+            <p class="text-xs uppercase tracking-widest text-gray-500 mb-1">Wykorzystanie</p>
+            <p class="text-2xl font-bold {% if stats.over %}text-red-400{% else %}text-gray-200{% endif %}">{{ stats.pct_raw }}<span class="text-sm text-gray-500">%</span></p>
+        </div>
+    </div>
+
+    {# Pasek całkowitego budżetu #}
+    <div class="bg-gray-900 border border-gray-800 rounded-xl p-5 mb-6">
+        <div class="flex justify-between text-xs text-gray-500 mb-2">
+            <span>Całkowite wykorzystanie budżetu</span>
+            <span class="{% if stats.over %}text-red-400{% else %}text-gray-400{% endif %}">{{ stats.spent|floatformat:0 }} / {{ stats.planned|floatformat:0 }} zł</span>
+        </div>
+        <div class="w-full h-3 rounded-full bg-gray-800">
+            <div class="h-3 rounded-full transition-all {% if stats.over %}bg-red-500{% else %}bg-indigo-500{% endif %}"
+                 style="width: {{ stats.pct }}%"></div>
+        </div>
+    </div>
+
+    {# SEKCJA: Praca zespołu #}
+    <section class="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden mb-6">
+        <div class="px-5 py-4 border-b border-gray-800 flex items-center justify-between">
+            <div>
+                <h2 class="text-sm font-semibold uppercase tracking-wider text-gray-500">Praca zespołu (LABOUR)</h2>
+                {% if labour_cat %}
+                <p class="text-xs text-gray-600 mt-0.5">
+                    Planowano: <span class="text-gray-400">{{ labour_cat.planned_amount|floatformat:0 }} zł</span> |
+                    Koszt zatwierdzonych godzin: <span class="text-indigo-400 font-medium">{{ labour_cat.spent_amount|floatformat:0 }} zł</span>
+                </p>
+                {% endif %}
+            </div>
+            <div class="flex items-center gap-3">
+                <a href="{% url 'project_team_rates' project_pk=project.pk %}"
+                   class="inline-flex items-center gap-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 border border-gray-700 px-3 py-1.5 text-xs font-medium text-gray-300 transition">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    Stawki zespołu
+                </a>
+                {% if labour_cat %}
+                <a href="{% url 'budget_category_edit' pk=project.pk cat_pk=labour_cat.pk %}"
+                   class="text-xs text-gray-500 hover:text-gray-300 transition">Edytuj plan →</a>
+                {% endif %}
+            </div>
+        </div>
+
+        {% if labour_breakdown %}
+        <table class="w-full text-sm">
+            <thead>
+                <tr class="text-xs uppercase tracking-wider text-gray-600 border-b border-gray-800">
+                    <th class="text-left px-5 py-2.5 font-medium">Pracownik</th>
+                    <th class="text-left px-5 py-2.5 font-medium hidden sm:table-cell">Rola</th>
+                    <th class="text-right px-5 py-2.5 font-medium">Godziny</th>
+                    <th class="text-right px-5 py-2.5 font-medium hidden md:table-cell">Stawka/h</th>
+                    <th class="text-right px-5 py-2.5 font-medium">Koszt</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-800">
+                {% for row in labour_breakdown %}
+                <tr class="hover:bg-gray-800/30 transition">
+                    <td class="px-5 py-3 text-gray-200">{{ row.full_name }}</td>
+                    <td class="px-5 py-3 text-gray-400 hidden sm:table-cell">{{ row.role_display }}</td>
+                    <td class="px-5 py-3 text-right text-gray-300">{{ row.hours|floatformat:1 }} h</td>
+                    <td class="px-5 py-3 text-right text-gray-400 hidden md:table-cell">{{ row.rate|floatformat:0 }} zł</td>
+                    <td class="px-5 py-3 text-right font-semibold text-indigo-400">{{ row.cost|floatformat:0 }} zł</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+            {% if labour_cat %}
+            <tfoot class="border-t border-gray-700">
+                <tr>
+                    <td colspan="2" class="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Łącznie (zatwierdzone godziny)</td>
+                    <td class="px-5 py-3 text-right text-gray-300 font-medium hidden md:table-cell"></td>
+                    <td class="px-5 py-3 text-right text-gray-300 font-medium hidden md:table-cell"></td>
+                    <td class="px-5 py-3 text-right font-bold text-white">{{ labour_cat.spent_amount|floatformat:0 }} zł</td>
+                </tr>
+            </tfoot>
+            {% endif %}
+        </table>
+        {% else %}
+        <div class="px-5 py-8 text-center">
+            <p class="text-sm text-gray-600">Brak zatwierdzonych godzin pracy</p>
+        </div>
+        {% endif %}
+    </section>
+
+    {# SEKCJA: Pozostałe kategorie #}
+    <section class="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
+        <div class="px-5 py-4 border-b border-gray-800 flex items-center justify-between">
+            <h2 class="text-sm font-semibold uppercase tracking-wider text-gray-500">Pozostałe kategorie</h2>
+            <a href="{% url 'budget_category_create' pk=project.pk %}"
+               class="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 px-3 py-1.5 text-xs font-semibold text-white transition">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                Dodaj kategorię
+            </a>
+        </div>
+
+        {% if cats_with_pct %}
+        <div class="divide-y divide-gray-800">
+            {% for item in cats_with_pct %}
+            <div class="px-5 py-4">
+                <div class="flex items-center justify-between mb-2">
+                    <div class="flex items-center gap-2">
+                        <p class="text-sm font-medium text-gray-200">{{ item.cat.name }}</p>
+                        {% if item.cat.category_type == 'INFRASTRUCTURE' %}
+                        <span class="px-1.5 py-0.5 rounded text-xs bg-blue-900/50 text-blue-300">Infrastruktura</span>
+                        {% elif item.cat.category_type == 'LICENSES' %}
+                        <span class="px-1.5 py-0.5 rounded text-xs bg-purple-900/50 text-purple-300">Licencje</span>
+                        {% else %}
+                        <span class="px-1.5 py-0.5 rounded text-xs bg-gray-700 text-gray-400">Inne</span>
+                        {% endif %}
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <span class="text-xs {% if item.over %}text-red-400{% else %}text-gray-400{% endif %}">
+                            {{ item.cat.spent_amount|floatformat:0 }} / {{ item.cat.planned_amount|floatformat:0 }} zł
+                            <span class="ml-1 font-medium">({{ item.pct_raw }}%)</span>
+                        </span>
+                        <a href="{% url 'budget_category_edit' pk=project.pk cat_pk=item.cat.pk %}"
+                           class="text-xs text-gray-500 hover:text-indigo-400 transition">Edytuj</a>
+                        <form method="post" action="{% url 'budget_category_delete' pk=project.pk cat_pk=item.cat.pk %}"
+                              onsubmit="return confirm('Usunąć kategorię?')" class="inline">
+                            {% csrf_token %}
+                            <button type="submit" class="text-xs text-gray-600 hover:text-red-400 transition cursor-pointer">Usuń</button>
+                        </form>
+                    </div>
+                </div>
+                <div class="w-full h-2 rounded-full bg-gray-800">
+                    <div class="h-2 rounded-full transition-all {% if item.over %}bg-red-500{% else %}bg-indigo-400{% endif %}"
+                         style="width: {{ item.pct }}%"></div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="px-5 py-8 text-center">
+            <p class="text-sm text-gray-600 mb-3">Brak dodatkowych kategorii budżetu</p>
+            <a href="{% url 'budget_category_create' pk=project.pk %}"
+               class="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 px-3 py-1.5 text-xs font-semibold text-white transition">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                Dodaj pierwszą kategorię
+            </a>
+        </div>
+        {% endif %}
+    </section>
+
+</main>
+{% endblock %}

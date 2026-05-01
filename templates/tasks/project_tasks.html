@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block title %}Zadania — {{ project.name }} — NovaPM{% endblock %}
+
+{% block content %}
+<nav class="bg-gray-900 border-b border-gray-800 px-6 py-3 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+        <div class="flex items-center justify-center w-8 h-8 rounded-lg bg-indigo-600">
+            <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+            </svg>
+        </div>
+        <span class="font-bold text-white text-lg tracking-tight">NovaPM</span>
+    </div>
+    <div class="flex items-center gap-4">
+        <div class="text-right hidden sm:block">
+            <p class="text-sm font-medium text-gray-200">{{ request.user.get_full_name|default:request.user.username }}</p>
+            <p class="text-xs text-indigo-400">{{ request.user.get_role_display }}</p>
+        </div>
+        <a href="{% url 'user_profile' %}"
+           class="text-xs text-gray-500 hover:text-gray-300 transition">Mój profil</a>
+        <form method="post" action="{% url 'logout' %}">{% csrf_token %}
+            <button type="submit" class="rounded-lg bg-gray-800 hover:bg-gray-700 border border-gray-700 px-3 py-1.5 text-xs font-medium text-gray-300 transition cursor-pointer">Wyloguj</button>
+        </form>
+    </div>
+</nav>
+
+<main class="max-w-7xl mx-auto px-6 py-8">
+    <div class="mb-4">
+        <a href="{% url 'project_detail' project.pk %}" class="inline-flex items-center gap-1.5 text-sm text-gray-400 hover:text-indigo-400 transition">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+            Wróć do projektu
+        </a>
+    </div>
+
+    <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
+        <div>
+            <h1 class="text-2xl font-bold text-white">Zadania projektu</h1>
+            <p class="text-sm text-gray-400 mt-0.5">{{ project.name }}</p>
+        </div>
+        <div class="flex items-center gap-3">
+            {# Filtr wykonawcy #}
+            <form method="get" class="flex items-center gap-2">
+                <select name="assigned_to" onchange="this.form.submit()"
+                        class="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <option value="">Wszyscy</option>
+                    {% for m in members %}
+                    <option value="{{ m.user.pk }}" {% if assigned_filter == m.user.pk|stringformat:'s' %}selected{% endif %}>
+                        {{ m.user.username }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </form>
+            {% if is_pm_or_staff %}
+            <a href="{% url 'task_create' pk=project.pk %}"
+               class="inline-flex items-center gap-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 px-4 py-2 text-sm font-semibold text-white transition">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                Nowe zadanie
+            </a>
+            {% endif %}
+        </div>
+    </div>
+
+    {# Kanban #}
+    <div class="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-5 gap-4" id="kanban-root">
+        {% include 'tasks/_col.html' with col_key='TODO' col_label='Do zrobienia' col_color='text-gray-400' col_tasks=kanban.TODO edit_next='' %}
+        {% include 'tasks/_col.html' with col_key='IN_PROGRESS' col_label='W trakcie' col_color='text-blue-400' col_tasks=kanban.IN_PROGRESS edit_next='' %}
+        {% include 'tasks/_col.html' with col_key='IN_REVIEW' col_label='W przeglądzie' col_color='text-purple-400' col_tasks=kanban.IN_REVIEW edit_next='' %}
+        {% include 'tasks/_col.html' with col_key='DONE' col_label='Ukończone' col_color='text-emerald-400' col_tasks=kanban.DONE edit_next='' %}
+        {% include 'tasks/_col.html' with col_key='BLOCKED' col_label='Zablokowane' col_color='text-red-400' col_tasks=kanban.BLOCKED edit_next='' %}
+    </div>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
+<script>
+document.querySelectorAll('.kanban-col').forEach(function(col){
+    new Sortable(col, {
+        group: 'kanban', animation: 150, ghostClass: 'opacity-30',
+        onEnd: function(evt){
+            const taskId = evt.item.dataset.taskId;
+            const newStatus = evt.to.dataset.status;
+            fetch('/tasks/' + taskId + '/status/', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}'},
+                body: JSON.stringify({status: newStatus}),
+            }).then(function(r){ if(!r.ok){ location.reload(); } });
+        }
+    });
+});
+</script>
+{% endblock %}

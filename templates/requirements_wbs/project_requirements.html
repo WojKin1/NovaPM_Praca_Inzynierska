@@ -1,0 +1,221 @@
+{% extends "base.html" %}
+{% block title %}Wymagania — {{ project.name }} — NovaPM{% endblock %}
+
+{% block content %}
+<nav class="bg-gray-900 border-b border-gray-800 px-6 py-3 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+        <div class="flex items-center justify-center w-8 h-8 rounded-lg {% if is_pm_or_staff %}bg-indigo-600{% else %}bg-amber-600{% endif %}">
+            <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+            </svg>
+        </div>
+        <span class="font-bold text-white text-lg tracking-tight">NovaPM</span>
+        {% if not is_pm_or_staff %}
+        <div class="hidden sm:flex items-center gap-1 text-sm ml-2">
+            <a href="{% url 'my_requirements_projects' %}" class="px-3 py-1 rounded-md text-amber-400 hover:text-white hover:bg-gray-800 transition">Moje projekty</a>
+            <a href="{% url 'my_tasks' %}" class="px-3 py-1 rounded-md text-gray-400 hover:text-white hover:bg-gray-800 transition">Moje zadania</a>
+            <span class="text-gray-700">·</span>
+            <a href="{% url 'project_requirements' project_pk=project.pk %}" class="px-3 py-1 rounded-md text-white bg-gray-800 font-medium">Wymagania</a>
+            <a href="{% url 'project_wbs' project_pk=project.pk %}" class="px-3 py-1 rounded-md text-gray-400 hover:text-white hover:bg-gray-800 transition">WBS</a>
+            <a href="{% url 'my_timesheet' %}" class="px-3 py-1 rounded-md text-gray-400 hover:text-white hover:bg-gray-800 transition">Timesheet</a>
+            <a href="{% url 'cr_select_project' %}" class="px-3 py-1 rounded-md text-gray-400 hover:text-white hover:bg-gray-800 transition">Złóż wniosek</a>
+        </div>
+        {% endif %}
+    </div>
+    <div class="flex items-center gap-4">
+        <div class="text-right hidden sm:block">
+            <p class="text-sm font-medium text-gray-200">{{ request.user.get_full_name|default:request.user.username }}</p>
+            <p class="text-xs {% if is_pm_or_staff %}text-indigo-400{% else %}text-amber-400{% endif %}">{{ request.user.get_role_display }}</p>
+        </div>
+        <a href="{% url 'user_profile' %}"
+           class="text-xs text-gray-500 hover:text-gray-300 transition">Mój profil</a>
+        <form method="post" action="{% url 'logout' %}">{% csrf_token %}
+            <button type="submit" class="rounded-lg bg-gray-800 hover:bg-gray-700 border border-gray-700 px-3 py-1.5 text-xs font-medium text-gray-300 transition cursor-pointer">Wyloguj</button>
+        </form>
+    </div>
+</nav>
+
+<main class="max-w-6xl mx-auto px-6 py-8">
+
+    <div class="mb-5">
+        <a href="{% url 'project_detail' project.pk %}" class="inline-flex items-center gap-1.5 text-sm text-gray-400 hover:text-amber-400 transition">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+            {% if request.user.role == 'ANALYST' %}Przejdź do projektu{% else %}Wróć do projektu{% endif %}
+        </a>
+    </div>
+
+    <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
+        <div>
+            <h1 class="text-2xl font-bold text-white">Wymagania projektu</h1>
+            <p class="text-sm text-gray-400 mt-0.5">{{ project.name }}</p>
+        </div>
+        <div class="flex items-center gap-2 flex-wrap">
+            <a href="{% url 'analyst_requirements_report' project_pk=project.pk %}?format=pdf"
+               class="inline-flex items-center gap-1.5 rounded-lg bg-gray-700 hover:bg-gray-600 border border-gray-600 px-3 py-1.5 text-xs font-medium text-gray-200 transition">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                Eksport PDF
+            </a>
+            <a href="{% url 'analyst_requirements_report' project_pk=project.pk %}?format=csv"
+               class="inline-flex items-center gap-1.5 rounded-lg bg-gray-700 hover:bg-gray-600 border border-gray-600 px-3 py-1.5 text-xs font-medium text-gray-200 transition">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                Eksport CSV
+            </a>
+            {% if can_edit %}
+            <a href="{% url 'requirement_create' project_pk=project.pk %}"
+               class="inline-flex items-center gap-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 px-4 py-2 text-sm font-semibold text-white transition">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                Nowe wymaganie
+            </a>
+            {% endif %}
+        </div>
+    </div>
+
+    {# Statystyki #}
+    <div class="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-6">
+        <div class="bg-gray-900 border border-gray-800 rounded-xl p-4 text-center">
+            <p class="text-2xl font-bold text-white">{{ stats.total }}</p>
+            <p class="text-xs text-gray-500 mt-0.5">Łącznie</p>
+        </div>
+        <div class="bg-gray-900 border border-gray-800 rounded-xl p-4 text-center">
+            <p class="text-2xl font-bold text-gray-400">{{ stats.draft }}</p>
+            <p class="text-xs text-gray-500 mt-0.5">Szkic</p>
+        </div>
+        <div class="bg-gray-900 border border-emerald-900/40 rounded-xl p-4 text-center">
+            <p class="text-2xl font-bold text-emerald-400">{{ stats.approved }}</p>
+            <p class="text-xs text-gray-500 mt-0.5">Zatwierdzone</p>
+        </div>
+        <div class="bg-gray-900 border border-indigo-900/40 rounded-xl p-4 text-center">
+            <p class="text-2xl font-bold text-indigo-400">{{ stats.implemented }}</p>
+            <p class="text-xs text-gray-500 mt-0.5">Zrealizowane</p>
+        </div>
+        <div class="bg-gray-900 border border-red-900/40 rounded-xl p-4 text-center">
+            <p class="text-2xl font-bold text-red-400">{{ stats.rejected }}</p>
+            <p class="text-xs text-gray-500 mt-0.5">Odrzucone</p>
+        </div>
+    </div>
+
+    {# Filtry #}
+    <div class="flex flex-wrap items-center gap-4 mb-5">
+        <div class="flex items-center gap-1.5 flex-wrap">
+            <span class="text-xs text-gray-500 mr-1">Typ:</span>
+            <a href="?{% if status_filter %}status={{ status_filter }}&{% endif %}type="
+               class="px-3 py-1 rounded-full text-xs font-medium transition {% if not type_filter %}bg-amber-700 text-white{% else %}bg-gray-800 text-gray-400 hover:text-white{% endif %}">
+                Wszystkie
+            </a>
+            <a href="?{% if status_filter %}status={{ status_filter }}&{% endif %}type=FUNCTIONAL"
+               class="px-3 py-1 rounded-full text-xs font-medium transition {% if type_filter == 'FUNCTIONAL' %}bg-blue-700 text-white{% else %}bg-gray-800 text-gray-400 hover:text-white{% endif %}">
+                Funkcjonalne
+            </a>
+            <a href="?{% if status_filter %}status={{ status_filter }}&{% endif %}type=NON_FUNCTIONAL"
+               class="px-3 py-1 rounded-full text-xs font-medium transition {% if type_filter == 'NON_FUNCTIONAL' %}bg-purple-700 text-white{% else %}bg-gray-800 text-gray-400 hover:text-white{% endif %}">
+                Niefunkcjonalne
+            </a>
+        </div>
+        <div class="flex items-center gap-1.5 flex-wrap">
+            <span class="text-xs text-gray-500 mr-1">Status:</span>
+            <a href="?{% if type_filter %}type={{ type_filter }}&{% endif %}status="
+               class="px-3 py-1 rounded-full text-xs font-medium transition {% if not status_filter %}bg-amber-700 text-white{% else %}bg-gray-800 text-gray-400 hover:text-white{% endif %}">
+                Wszystkie
+            </a>
+            <a href="?{% if type_filter %}type={{ type_filter }}&{% endif %}status=DRAFT"
+               class="px-3 py-1 rounded-full text-xs font-medium transition {% if status_filter == 'DRAFT' %}bg-gray-600 text-white{% else %}bg-gray-800 text-gray-400 hover:text-white{% endif %}">
+                Szkic
+            </a>
+            <a href="?{% if type_filter %}type={{ type_filter }}&{% endif %}status=APPROVED"
+               class="px-3 py-1 rounded-full text-xs font-medium transition {% if status_filter == 'APPROVED' %}bg-emerald-700 text-white{% else %}bg-gray-800 text-gray-400 hover:text-white{% endif %}">
+                Zatwierdzone
+            </a>
+            <a href="?{% if type_filter %}type={{ type_filter }}&{% endif %}status=IMPLEMENTED"
+               class="px-3 py-1 rounded-full text-xs font-medium transition {% if status_filter == 'IMPLEMENTED' %}bg-indigo-700 text-white{% else %}bg-gray-800 text-gray-400 hover:text-white{% endif %}">
+                Zrealizowane
+            </a>
+            <a href="?{% if type_filter %}type={{ type_filter }}&{% endif %}status=REJECTED"
+               class="px-3 py-1 rounded-full text-xs font-medium transition {% if status_filter == 'REJECTED' %}bg-red-700 text-white{% else %}bg-gray-800 text-gray-400 hover:text-white{% endif %}">
+                Odrzucone
+            </a>
+        </div>
+    </div>
+
+    {# Tabela #}
+    <section class="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
+        {% if requirements %}
+        <table class="w-full text-sm">
+            <thead>
+                <tr class="text-xs uppercase tracking-wider text-gray-600 border-b border-gray-800">
+                    <th class="text-left px-5 py-3 font-medium">Kod</th>
+                    <th class="text-left px-5 py-3 font-medium">Tytuł</th>
+                    <th class="text-left px-5 py-3 font-medium hidden md:table-cell">Typ</th>
+                    <th class="text-left px-5 py-3 font-medium hidden sm:table-cell">Priorytet</th>
+                    <th class="text-left px-5 py-3 font-medium">Status</th>
+                    <th class="text-left px-5 py-3 font-medium hidden lg:table-cell">Data</th>
+                    <th class="px-5 py-3"></th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-800">
+                {% for req in requirements %}
+                <tr class="hover:bg-gray-800/30 transition">
+                    <td class="px-5 py-3">
+                        <span class="font-mono text-xs font-semibold text-amber-400">{{ req.code }}</span>
+                    </td>
+                    <td class="px-5 py-3 text-gray-200 max-w-xs">
+                        <p class="truncate">{{ req.title }}</p>
+                    </td>
+                    <td class="px-5 py-3 hidden md:table-cell">
+                        {% if req.req_type == 'FUNCTIONAL' %}
+                        <span class="px-2 py-0.5 rounded text-xs bg-blue-900/50 text-blue-300">Funkcjonalne</span>
+                        {% else %}
+                        <span class="px-2 py-0.5 rounded text-xs bg-purple-900/50 text-purple-300">Niefunkcjonalne</span>
+                        {% endif %}
+                    </td>
+                    <td class="px-5 py-3 hidden sm:table-cell">
+                        {% if req.priority == 'HIGH' %}
+                        <span class="px-2 py-0.5 rounded text-xs bg-red-900/50 text-red-300">Wysoki</span>
+                        {% elif req.priority == 'MEDIUM' %}
+                        <span class="px-2 py-0.5 rounded text-xs bg-yellow-900/50 text-yellow-300">Średni</span>
+                        {% else %}
+                        <span class="px-2 py-0.5 rounded text-xs bg-gray-700 text-gray-400">Niski</span>
+                        {% endif %}
+                    </td>
+                    <td class="px-5 py-3">
+                        <span class="px-2 py-0.5 rounded text-xs
+                            {% if req.status == 'DRAFT' %}bg-gray-700 text-gray-300
+                            {% elif req.status == 'APPROVED' %}bg-emerald-900/60 text-emerald-300
+                            {% elif req.status == 'IMPLEMENTED' %}bg-indigo-900/60 text-indigo-300
+                            {% else %}bg-red-900/60 text-red-300{% endif %}">
+                            {{ req.get_status_display }}
+                        </span>
+                    </td>
+                    <td class="px-5 py-3 text-gray-500 text-xs hidden lg:table-cell">{{ req.created_at|date:"d.m.Y" }}</td>
+                    <td class="px-5 py-3 text-right whitespace-nowrap">
+                        {% if can_edit %}
+                        <a href="{% url 'requirement_edit' project_pk=project.pk pk=req.pk %}"
+                           class="text-xs text-gray-500 hover:text-amber-400 transition mr-3">Edytuj</a>
+                        {% endif %}
+                        {% if is_pm_or_staff or req.created_by == request.user %}
+                        <form method="post" action="{% url 'requirement_delete' project_pk=project.pk pk=req.pk %}"
+                              onsubmit="return confirm('Usunąć wymaganie {{ req.code }}?')" class="inline">
+                            {% csrf_token %}
+                            <button type="submit" class="text-xs text-gray-600 hover:text-red-400 transition cursor-pointer">Usuń</button>
+                        </form>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="px-5 py-10 text-center">
+            <p class="text-sm text-gray-600 mb-3">Brak wymagań{% if type_filter or status_filter %} dla wybranych filtrów{% endif %}.</p>
+            {% if can_edit and not type_filter and not status_filter %}
+            <a href="{% url 'requirement_create' project_pk=project.pk %}"
+               class="inline-flex items-center gap-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 px-3 py-1.5 text-xs font-semibold text-white transition">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                Dodaj pierwsze wymaganie
+            </a>
+            {% endif %}
+        </div>
+        {% endif %}
+    </section>
+
+</main>
+{% endblock %}

@@ -1,0 +1,178 @@
+{% extends "base.html" %}
+
+{% block title %}{% if risk %}Edytuj ryzyko{% else %}Nowe ryzyko{% endif %} — {{ project.name }} — NovaPM{% endblock %}
+
+{% block content %}
+
+{# ── Navbar ── #}
+<nav class="bg-gray-900 border-b border-gray-800 px-6 py-3 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+        <div class="flex items-center justify-center w-8 h-8 rounded-lg bg-indigo-600">
+            <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+            </svg>
+        </div>
+        <span class="font-bold text-white text-lg tracking-tight">NovaPM</span>
+    </div>
+    <div class="flex items-center gap-4">
+        <div class="text-right hidden sm:block">
+            <p class="text-sm font-medium text-gray-200">{{ request.user.get_full_name|default:request.user.username }}</p>
+            <p class="text-xs text-indigo-400">{{ request.user.get_role_display }}</p>
+        </div>
+        <a href="{% url 'user_profile' %}"
+           class="text-xs text-gray-500 hover:text-gray-300 transition">Mój profil</a>
+        <form method="post" action="{% url 'logout' %}">
+            {% csrf_token %}
+            <button type="submit" class="rounded-lg bg-gray-800 hover:bg-gray-700 border border-gray-700 px-3 py-1.5 text-xs font-medium text-gray-300 transition cursor-pointer">Wyloguj</button>
+        </form>
+    </div>
+</nav>
+
+<main class="max-w-3xl mx-auto px-6 py-8">
+
+    <div class="mb-6">
+        <a href="{% url 'risk_list' project_pk=project.pk %}" class="inline-flex items-center gap-1.5 text-sm text-gray-400 hover:text-indigo-400 transition">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+            Wróć do rejestru ryzyk
+        </a>
+    </div>
+
+    <div class="mb-6">
+        <h1 class="text-2xl font-bold text-white">{% if risk %}Edytuj ryzyko{% else %}Nowe ryzyko{% endif %}</h1>
+        <p class="text-sm text-gray-400 mt-0.5">Projekt: <span class="text-indigo-400">{{ project.name }}</span></p>
+    </div>
+
+    {# Podgląd poziomu ryzyka na żywo #}
+    <div class="bg-gray-900 border border-gray-800 rounded-xl px-5 py-4 mb-4 flex items-center gap-4">
+        <div class="text-sm text-gray-400">Poziom ryzyka:</div>
+        <div id="risk-level-display"
+             class="text-2xl font-bold text-gray-500 transition-all duration-200">
+            —
+        </div>
+        <div id="risk-level-label" class="text-xs text-gray-600"></div>
+    </div>
+
+    <form method="post" novalidate>
+        {% csrf_token %}
+        <div class="bg-gray-900 border border-gray-800 rounded-xl p-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+
+                {# Lewa #}
+                <div class="flex flex-col gap-5">
+
+                    <div>
+                        <label for="{{ form.title.id_for_label }}" class="block text-sm font-medium text-gray-300 mb-1">
+                            {{ form.title.label }} <span class="text-red-500">*</span>
+                        </label>
+                        {{ form.title }}
+                        {% for e in form.title.errors %}<p class="mt-1 text-xs text-red-400">{{ e }}</p>{% endfor %}
+                    </div>
+
+                    <div>
+                        <label for="{{ form.description.id_for_label }}" class="block text-sm font-medium text-gray-300 mb-1">{{ form.description.label }}</label>
+                        {{ form.description }}
+                        {% for e in form.description.errors %}<p class="mt-1 text-xs text-red-400">{{ e }}</p>{% endfor %}
+                    </div>
+
+                    <div>
+                        <label for="{{ form.mitigation_plan.id_for_label }}" class="block text-sm font-medium text-gray-300 mb-1">{{ form.mitigation_plan.label }}</label>
+                        {{ form.mitigation_plan }}
+                        {% for e in form.mitigation_plan.errors %}<p class="mt-1 text-xs text-red-400">{{ e }}</p>{% endfor %}
+                    </div>
+
+                </div>
+
+                {# Prawa #}
+                <div class="flex flex-col gap-5">
+
+                    <div>
+                        <label for="id_probability" class="block text-sm font-medium text-gray-300 mb-1">
+                            {{ form.probability.label }} <span class="text-red-500">*</span>
+                        </label>
+                        {{ form.probability }}
+                        {% for e in form.probability.errors %}<p class="mt-1 text-xs text-red-400">{{ e }}</p>{% endfor %}
+                    </div>
+
+                    <div>
+                        <label for="id_impact" class="block text-sm font-medium text-gray-300 mb-1">
+                            {{ form.impact.label }} <span class="text-red-500">*</span>
+                        </label>
+                        {{ form.impact }}
+                        {% for e in form.impact.errors %}<p class="mt-1 text-xs text-red-400">{{ e }}</p>{% endfor %}
+                    </div>
+
+                    <div>
+                        <label for="{{ form.status.id_for_label }}" class="block text-sm font-medium text-gray-300 mb-1">
+                            {{ form.status.label }} <span class="text-red-500">*</span>
+                        </label>
+                        {{ form.status }}
+                        {% for e in form.status.errors %}<p class="mt-1 text-xs text-red-400">{{ e }}</p>{% endfor %}
+                    </div>
+
+                    <div>
+                        <label for="{{ form.owner.id_for_label }}" class="block text-sm font-medium text-gray-300 mb-1">
+                            {{ form.owner.label }} <span class="text-red-500">*</span>
+                        </label>
+                        {{ form.owner }}
+                        {% for e in form.owner.errors %}<p class="mt-1 text-xs text-red-400">{{ e }}</p>{% endfor %}
+                    </div>
+
+                </div>
+            </div>
+
+            {% if form.non_field_errors %}
+            <div class="mt-4 rounded-lg bg-red-900/40 border border-red-700 px-4 py-3">
+                {% for e in form.non_field_errors %}<p class="text-sm text-red-300">{{ e }}</p>{% endfor %}
+            </div>
+            {% endif %}
+
+            <div class="flex items-center justify-end gap-3 mt-6 pt-5 border-t border-gray-800">
+                <a href="{% url 'risk_list' project_pk=project.pk %}"
+                   class="rounded-lg bg-gray-800 hover:bg-gray-700 border border-gray-700 px-5 py-2.5 text-sm font-medium text-gray-300 transition">
+                    Anuluj
+                </a>
+                <button type="submit"
+                        class="inline-flex items-center gap-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 px-5 py-2.5 text-sm font-semibold text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-900 transition cursor-pointer">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                    {% if risk %}Zapisz zmiany{% else %}Dodaj ryzyko{% endif %}
+                </button>
+            </div>
+        </div>
+    </form>
+</main>
+
+<script>
+(function () {
+    const pSel = document.getElementById('id_probability');
+    const iSel = document.getElementById('id_impact');
+    const display = document.getElementById('risk-level-display');
+    const label   = document.getElementById('risk-level-label');
+
+    function update() {
+        const p = parseInt(pSel.value) || 0;
+        const i = parseInt(iSel.value) || 0;
+        if (!p || !i) { display.textContent = '—'; display.className = 'text-2xl font-bold text-gray-500'; label.textContent = ''; return; }
+        const level = p * i;
+        display.textContent = level;
+        if (level > 12) {
+            display.className = 'text-2xl font-bold text-red-400 transition-all duration-200';
+            label.textContent = 'Wysokie';
+            label.className = 'text-xs text-red-500';
+        } else if (level > 6) {
+            display.className = 'text-2xl font-bold text-yellow-400 transition-all duration-200';
+            label.textContent = 'Średnie';
+            label.className = 'text-xs text-yellow-500';
+        } else {
+            display.className = 'text-2xl font-bold text-green-400 transition-all duration-200';
+            label.textContent = 'Niskie';
+            label.className = 'text-xs text-green-500';
+        }
+    }
+
+    pSel.addEventListener('change', update);
+    iSel.addEventListener('change', update);
+    update();
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+{% block title %}Wnioski o zmianę — {{ project.name }} — NovaPM{% endblock %}
+
+{% block content %}
+<nav class="bg-gray-900 border-b border-gray-800 px-6 py-3 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+        <div class="flex items-center justify-center w-8 h-8 rounded-lg bg-indigo-600">
+            <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+            </svg>
+        </div>
+        <span class="font-bold text-white text-lg tracking-tight">NovaPM</span>
+    </div>
+    <div class="flex items-center gap-4">
+        <div class="text-right hidden sm:block">
+            <p class="text-sm font-medium text-gray-200">{{ request.user.get_full_name|default:request.user.username }}</p>
+            <p class="text-xs text-indigo-400">{{ request.user.get_role_display }}</p>
+        </div>
+        <a href="{% url 'user_profile' %}"
+           class="text-xs text-gray-500 hover:text-gray-300 transition">Mój profil</a>
+        <form method="post" action="{% url 'logout' %}">{% csrf_token %}
+            <button type="submit" class="rounded-lg bg-gray-800 hover:bg-gray-700 border border-gray-700 px-3 py-1.5 text-xs font-medium text-gray-300 transition cursor-pointer">Wyloguj</button>
+        </form>
+    </div>
+</nav>
+
+<main class="max-w-7xl mx-auto px-6 py-8">
+    <div class="mb-6">
+        <a href="{% url 'project_detail' project.pk %}" class="inline-flex items-center gap-1.5 text-sm text-gray-400 hover:text-indigo-400 transition mb-4">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+            Wróć do projektu
+        </a>
+        <div class="flex items-center justify-between">
+            <div>
+                <h1 class="text-2xl font-bold text-white">Wnioski o zmianę</h1>
+                <p class="text-sm text-gray-400 mt-0.5">Projekt: <span class="text-indigo-400">{{ project.name }}</span></p>
+            </div>
+            {% if can_create %}
+            <a href="{% url 'cr_create' project_pk=project.pk %}"
+               class="inline-flex items-center gap-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 px-4 py-2 text-sm font-semibold text-white transition">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                Nowy wniosek
+            </a>
+            {% endif %}
+        </div>
+    </div>
+
+    {# Filtry statusu #}
+    <div class="flex flex-wrap gap-2 mb-5">
+        <a href="?status=" class="px-3 py-1 rounded-full text-xs font-medium transition {% if not status_filter %}bg-indigo-600 text-white{% else %}bg-gray-800 text-gray-400 hover:bg-gray-700{% endif %}">Wszystkie</a>
+        {% for value, label in statuses %}
+        <a href="?status={{ value }}" class="px-3 py-1 rounded-full text-xs font-medium transition {% if status_filter == value %}bg-indigo-600 text-white{% else %}bg-gray-800 text-gray-400 hover:bg-gray-700{% endif %}">{{ label }}</a>
+        {% endfor %}
+    </div>
+
+    {# Tabela CR #}
+    <div class="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
+        {% if crs %}
+        <table class="w-full text-sm">
+            <thead>
+                <tr class="border-b border-gray-800 text-xs uppercase tracking-wider text-gray-500">
+                    <th class="text-left px-5 py-3 font-medium w-10">#</th>
+                    <th class="text-left px-5 py-3 font-medium">Tytuł</th>
+                    <th class="text-left px-5 py-3 font-medium hidden sm:table-cell">Wnioskodawca</th>
+                    <th class="text-left px-5 py-3 font-medium">Status</th>
+                    <th class="text-right px-5 py-3 font-medium hidden md:table-cell">Czas / Koszt</th>
+                    <th class="text-right px-5 py-3 font-medium hidden lg:table-cell">Data</th>
+                    <th class="text-right px-5 py-3 font-medium">Akcje</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-800">
+                {% for cr in crs %}
+                <tr class="hover:bg-gray-800/40 transition">
+                    <td class="px-5 py-4 text-gray-600 text-xs">{{ cr.pk }}</td>
+                    <td class="px-5 py-4">
+                        <a href="{% url 'cr_detail' project_pk=project.pk pk=cr.pk %}"
+                           class="font-medium text-gray-200 hover:text-indigo-400 transition">{{ cr.title }}</a>
+                    </td>
+                    <td class="px-5 py-4 text-gray-400 hidden sm:table-cell">{{ cr.requested_by.username }}</td>
+                    <td class="px-5 py-4">
+                        {% if cr.status == 'DRAFT' %}
+                            <span class="px-2 py-0.5 rounded-full text-xs bg-gray-700 text-gray-300">Szkic</span>
+                        {% elif cr.status == 'SUBMITTED' %}
+                            <span class="px-2 py-0.5 rounded-full text-xs bg-blue-900/60 text-blue-300">Złożony</span>
+                        {% elif cr.status == 'ANALYSED' %}
+                            <span class="px-2 py-0.5 rounded-full text-xs bg-yellow-900/60 text-yellow-300">Analizowany</span>
+                        {% elif cr.status == 'APPROVED' %}
+                            <span class="px-2 py-0.5 rounded-full text-xs bg-emerald-900/60 text-emerald-300">Zatwierdzony</span>
+                        {% elif cr.status == 'REJECTED' %}
+                            <span class="px-2 py-0.5 rounded-full text-xs bg-red-900/60 text-red-300">Odrzucony</span>
+                        {% endif %}
+                    </td>
+                    <td class="px-5 py-4 text-right hidden md:table-cell text-gray-400 text-xs">
+                        <p>+{{ cr.impact_time }} dni</p>
+                        <p>+{{ cr.impact_cost|floatformat:0 }} zł</p>
+                    </td>
+                    <td class="px-5 py-4 text-right hidden lg:table-cell text-gray-500 text-xs">{{ cr.created_at|date:"d.m.Y" }}</td>
+                    <td class="px-5 py-4 text-right">
+                        <a href="{% url 'cr_detail' project_pk=project.pk pk=cr.pk %}"
+                           class="text-xs text-indigo-400 hover:text-indigo-300 transition">Szczegóły</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="flex flex-col items-center justify-center py-16 text-center">
+            <svg class="w-12 h-12 text-gray-700 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+            </svg>
+            <p class="text-gray-500 font-medium">Brak wniosków o zmianę</p>
+            <p class="text-gray-600 text-sm mt-1">{% if status_filter %}Brak wniosków z wybranym statusem.{% else %}Nie złożono jeszcze żadnych wniosków.{% endif %}</p>
+        </div>
+        {% endif %}
+    </div>
+</main>
+{% endblock %}

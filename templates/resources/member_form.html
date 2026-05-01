@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+
+{% block title %}Dodaj członka — {{ project.name }} — NovaPM{% endblock %}
+
+{% block content %}
+
+{# ── Navbar ── #}
+<nav class="bg-gray-900 border-b border-gray-800 px-6 py-3 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+        <div class="flex items-center justify-center w-8 h-8 rounded-lg bg-indigo-600">
+            <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+            </svg>
+        </div>
+        <span class="font-bold text-white text-lg tracking-tight">NovaPM</span>
+    </div>
+    <div class="flex items-center gap-4">
+        <div class="text-right hidden sm:block">
+            <p class="text-sm font-medium text-gray-200">{{ request.user.get_full_name|default:request.user.username }}</p>
+            <p class="text-xs text-indigo-400">{{ request.user.get_role_display }}</p>
+        </div>
+        <a href="{% url 'user_profile' %}"
+           class="text-xs text-gray-500 hover:text-gray-300 transition">Mój profil</a>
+        <form method="post" action="{% url 'logout' %}">
+            {% csrf_token %}
+            <button type="submit"
+                    class="rounded-lg bg-gray-800 hover:bg-gray-700 border border-gray-700 px-3 py-1.5 text-xs font-medium text-gray-300 transition cursor-pointer">
+                Wyloguj
+            </button>
+        </form>
+    </div>
+</nav>
+
+<main class="max-w-xl mx-auto px-6 py-8">
+
+    {# Powrót #}
+    <div class="mb-6">
+        <a href="{% url 'project_detail' project.pk %}"
+           class="inline-flex items-center gap-1.5 text-sm text-gray-400 hover:text-indigo-400 transition">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+            </svg>
+            Wróć do projektu
+        </a>
+    </div>
+
+    {# Nagłówek #}
+    <div class="mb-6">
+        <h1 class="text-2xl font-bold text-white">Dodaj członka zespołu</h1>
+        <p class="text-sm text-gray-400 mt-0.5">Projekt: <span class="text-indigo-400">{{ project.name }}</span></p>
+    </div>
+
+    {# Formularz #}
+    <form method="post" novalidate>
+        {% csrf_token %}
+        <div class="bg-gray-900 border border-gray-800 rounded-xl p-6 flex flex-col gap-5">
+
+            {# Użytkownik #}
+            <div>
+                <label for="{{ form.user.id_for_label }}"
+                       class="block text-sm font-medium text-gray-300 mb-1">
+                    {{ form.user.label }} <span class="text-red-500">*</span>
+                </label>
+                {{ form.user }}
+                {% for error in form.user.errors %}
+                <p class="mt-1 text-xs text-red-400 flex items-center gap-1">
+                    <svg class="w-3 h-3 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                    </svg>
+                    {{ error }}
+                </p>
+                {% endfor %}
+            </div>
+
+            {# Rola #}
+            <div>
+                <label for="{{ form.role_in_project.id_for_label }}"
+                       class="block text-sm font-medium text-gray-300 mb-1">
+                    {{ form.role_in_project.label }} <span class="text-red-500">*</span>
+                </label>
+                {{ form.role_in_project }}
+                {% for error in form.role_in_project.errors %}
+                <p class="mt-1 text-xs text-red-400">{{ error }}</p>
+                {% endfor %}
+            </div>
+
+            {# Dostępność #}
+            <div>
+                <label for="{{ form.availability_percent.id_for_label }}"
+                       class="block text-sm font-medium text-gray-300 mb-1">
+                    {{ form.availability_percent.label }} <span class="text-red-500">*</span>
+                </label>
+                <div class="flex items-center gap-3">
+                    {{ form.availability_percent }}
+                    <span class="text-gray-400 text-sm shrink-0">%</span>
+                </div>
+                <p class="text-xs text-gray-600 mt-1">Zakres: 10–100%, co 5%</p>
+                {% for error in form.availability_percent.errors %}
+                <p class="mt-1 text-xs text-red-400">{{ error }}</p>
+                {% endfor %}
+            </div>
+
+            {# Stawka godzinowa #}
+            <div>
+                <label for="{{ form.hourly_rate.id_for_label }}"
+                       class="block text-sm font-medium text-gray-300 mb-1">
+                    {{ form.hourly_rate.label }}
+                    <span class="text-gray-500 font-normal">(opcjonalne)</span>
+                </label>
+                {{ form.hourly_rate }}
+                {% if form.hourly_rate.help_text %}
+                <p class="mt-1 text-xs text-gray-500">{{ form.hourly_rate.help_text }}</p>
+                {% endif %}
+                {% for error in form.hourly_rate.errors %}
+                <p class="mt-1 text-xs text-red-400">{{ error }}</p>
+                {% endfor %}
+            </div>
+
+            {# Non-field errors #}
+            {% if form.non_field_errors %}
+            <div class="rounded-lg bg-red-900/40 border border-red-700 px-4 py-3">
+                {% for error in form.non_field_errors %}
+                <p class="text-sm text-red-300">{{ error }}</p>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            {# Przyciski #}
+            <div class="flex items-center justify-end gap-3 pt-2 border-t border-gray-800">
+                <a href="{% url 'project_detail' project.pk %}"
+                   class="rounded-lg bg-gray-800 hover:bg-gray-700 border border-gray-700
+                          px-5 py-2.5 text-sm font-medium text-gray-300 transition">
+                    Anuluj
+                </a>
+                <button type="submit"
+                        class="inline-flex items-center gap-2 rounded-lg bg-indigo-600 hover:bg-indigo-500
+                               px-5 py-2.5 text-sm font-semibold text-white
+                               focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-900
+                               transition cursor-pointer">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                    </svg>
+                    Dodaj członka
+                </button>
+            </div>
+
+        </div>
+    </form>
+
+</main>
+{% endblock %}

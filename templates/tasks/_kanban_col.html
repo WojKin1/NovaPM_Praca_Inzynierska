@@ -1,0 +1,57 @@
+{# Single Kanban column — col_key, col_label, col_color, col_tasks, today, edit_url_name, next_param #}
+<div class="flex flex-col min-h-[200px]">
+    {# Column header #}
+    <div class="flex items-center justify-between mb-3">
+        <span class="text-xs font-semibold uppercase tracking-wider {{ col_color }}">{{ col_label }}</span>
+        <span class="text-xs text-gray-600 bg-gray-800 rounded-full px-2 py-0.5">{{ col_tasks|length }}</span>
+    </div>
+
+    {# Drop zone #}
+    <div class="kanban-col flex flex-col gap-2 flex-1 min-h-[60px] rounded-lg p-1"
+         data-status="{{ col_key }}">
+
+        {% for task in col_tasks %}
+        <div class="kanban-card bg-gray-900 border border-gray-800 rounded-lg p-3 cursor-pointer hover:border-gray-700 transition select-none"
+             data-task-id="{{ task.pk }}">
+
+            {# Priority stripe #}
+            <div class="flex items-start justify-between gap-2 mb-2">
+                <p class="text-sm font-medium text-gray-200 leading-snug">{{ task.title }}</p>
+                {% if task.priority == 'CRITICAL' %}
+                    <span class="shrink-0 text-xs px-1.5 py-0.5 rounded bg-red-900/60 text-red-300">Kryt.</span>
+                {% elif task.priority == 'HIGH' %}
+                    <span class="shrink-0 text-xs px-1.5 py-0.5 rounded bg-orange-900/60 text-orange-300">Wys.</span>
+                {% elif task.priority == 'MEDIUM' %}
+                    <span class="shrink-0 text-xs px-1.5 py-0.5 rounded bg-teal-900/60 text-teal-300">Śr.</span>
+                {% else %}
+                    <span class="shrink-0 text-xs px-1.5 py-0.5 rounded bg-gray-700 text-gray-400">Nis.</span>
+                {% endif %}
+            </div>
+
+            <div class="flex items-center justify-between text-xs text-gray-500">
+                <span>{{ task.assigned_to.username|default:"—" }}</span>
+                <span class="{% if task.due_date < today and col_key != 'DONE' %}text-red-400 font-medium{% endif %}">
+                    {{ task.due_date|date:"d.m" }}
+                </span>
+            </div>
+
+            {% if task.project %}
+            <p class="text-xs text-gray-700 mt-1 truncate">{{ task.project.name }}</p>
+            {% endif %}
+
+            {# Edit link #}
+            <div class="mt-2 pt-2 border-t border-gray-800">
+                <a href="{% url edit_url_name pk=task.pk %}{% if next_param %}?next={{ next_param }}{% endif %}"
+                   class="text-xs text-indigo-500 hover:text-indigo-400 transition"
+                   onclick="event.stopPropagation()">
+                    Edytuj
+                </a>
+            </div>
+        </div>
+        {% empty %}
+        <div class="flex-1 rounded-lg border border-dashed border-gray-800 flex items-center justify-center min-h-[60px]">
+            <span class="text-xs text-gray-700">Brak zadań</span>
+        </div>
+        {% endfor %}
+    </div>
+</div>

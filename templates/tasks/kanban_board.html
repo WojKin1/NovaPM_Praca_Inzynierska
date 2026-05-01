@@ -1,0 +1,58 @@
+{# Shared Kanban board — expects: kanban dict, today, edit_url_name, next_param, is_pm_or_staff #}
+{% load static %}
+
+<div class="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-5 gap-4" id="kanban-root">
+
+{% with columns=kanban %}
+{% for col_key, col_label, col_color in kanban_cols %}
+{% with tasks=kanban|default_if_none:'' %}
+
+{# resolve column tasks directly #}
+{% if col_key == 'TODO' %}{% with col_tasks=kanban.TODO %}
+{% include 'tasks/_kanban_col.html' with col_key=col_key col_label=col_label col_color=col_color col_tasks=col_tasks %}
+{% endwith %}
+{% elif col_key == 'IN_PROGRESS' %}{% with col_tasks=kanban.IN_PROGRESS %}
+{% include 'tasks/_kanban_col.html' with col_key=col_key col_label=col_label col_color=col_color col_tasks=col_tasks %}
+{% endwith %}
+{% elif col_key == 'IN_REVIEW' %}{% with col_tasks=kanban.IN_REVIEW %}
+{% include 'tasks/_kanban_col.html' with col_key=col_key col_label=col_label col_color=col_color col_tasks=col_tasks %}
+{% endwith %}
+{% elif col_key == 'DONE' %}{% with col_tasks=kanban.DONE %}
+{% include 'tasks/_kanban_col.html' with col_key=col_key col_label=col_label col_color=col_color col_tasks=col_tasks %}
+{% endwith %}
+{% elif col_key == 'BLOCKED' %}{% with col_tasks=kanban.BLOCKED %}
+{% include 'tasks/_kanban_col.html' with col_key=col_key col_label=col_label col_color=col_color col_tasks=col_tasks %}
+{% endwith %}
+{% endif %}
+
+{% endwith %}
+{% endfor %}
+{% endwith %}
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
+<script>
+(function(){
+    const cols = document.querySelectorAll('.kanban-col');
+    cols.forEach(function(col){
+        new Sortable(col, {
+            group: 'kanban',
+            animation: 150,
+            ghostClass: 'opacity-30',
+            onEnd: function(evt){
+                const taskId = evt.item.dataset.taskId;
+                const newStatus = evt.to.dataset.status;
+                fetch('/tasks/' + taskId + '/status/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': '{{ csrf_token }}',
+                    },
+                    body: JSON.stringify({status: newStatus}),
+                }).then(function(r){ if(!r.ok){ location.reload(); } });
+            }
+        });
+    });
+})();
+</script>

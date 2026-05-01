@@ -1,0 +1,288 @@
+{% extends "base.html" %}
+{% block title %}Moja ewidencja czasu — NovaPM{% endblock %}
+
+{% block content %}
+<nav class="bg-gray-900 border-b border-gray-800 px-6 py-3 flex items-center justify-between">
+    <div class="flex items-center gap-4">
+        <div class="flex items-center gap-3">
+            <div class="flex items-center justify-center w-8 h-8 rounded-lg {% if request.user.role == 'PM' or request.user.is_staff %}bg-indigo-600{% elif request.user.role == 'ANALYST' %}bg-amber-600{% else %}bg-emerald-600{% endif %}">
+                <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+            </div>
+            <span class="font-bold text-white text-lg tracking-tight">NovaPM</span>
+        </div>
+        <div class="hidden sm:flex items-center gap-1 text-sm">
+            {% if request.user.role == 'PM' or request.user.is_staff %}
+            <a href="{% url 'project_list' %}" class="px-3 py-1 rounded-md text-gray-400 hover:text-white hover:bg-gray-800 transition">Projekty</a>
+            <a href="{% url 'my_timesheet' %}" class="px-3 py-1 rounded-md text-white bg-gray-800 font-medium">Timesheet</a>
+            {% elif request.user.role == 'ANALYST' %}
+            <a href="{% url 'my_requirements_projects' %}" class="px-3 py-1 rounded-md text-gray-400 hover:text-white hover:bg-gray-800 transition">Moje projekty</a>
+            <a href="{% url 'my_tasks' %}" class="px-3 py-1 rounded-md text-gray-400 hover:text-white hover:bg-gray-800 transition">Moje zadania</a>
+            <a href="{% url 'my_timesheet' %}" class="px-3 py-1 rounded-md text-white bg-gray-800 font-medium">Timesheet</a>
+            {% else %}
+            <a href="{% url 'my_tasks' %}" class="px-3 py-1 rounded-md text-gray-400 hover:text-white hover:bg-gray-800 transition">Moje zadania</a>
+            <a href="{% url 'my_timesheet' %}" class="px-3 py-1 rounded-md text-white bg-gray-800 font-medium">Timesheet</a>
+            <a href="{% url 'cr_select_project' %}" class="px-3 py-1 rounded-md text-gray-400 hover:text-white hover:bg-gray-800 transition">Złóż wniosek</a>
+            {% endif %}
+        </div>
+    </div>
+    <div class="flex items-center gap-4">
+        <div class="text-right hidden sm:block">
+            <p class="text-sm font-medium text-gray-200">{{ request.user.get_full_name|default:request.user.username }}</p>
+            <p class="text-xs {% if request.user.role == 'PM' or request.user.is_staff %}text-indigo-400{% elif request.user.role == 'ANALYST' %}text-amber-400{% else %}text-emerald-400{% endif %}">{{ request.user.get_role_display }}</p>
+        </div>
+        <a href="{% url 'user_profile' %}"
+           class="text-xs text-gray-500 hover:text-gray-300 transition">Mój profil</a>
+        <form method="post" action="{% url 'logout' %}">{% csrf_token %}
+            <button type="submit" class="rounded-lg bg-gray-800 hover:bg-gray-700 border border-gray-700 px-3 py-1.5 text-xs font-medium text-gray-300 transition cursor-pointer">Wyloguj</button>
+        </form>
+    </div>
+</nav>
+
+<main class="max-w-5xl mx-auto px-6 py-8">
+
+    <div class="flex flex-wrap items-center justify-between gap-4 mb-8">
+        <div>
+            <h1 class="text-2xl font-bold text-white">Moja ewidencja czasu</h1>
+            <p class="text-sm text-gray-400 mt-0.5">Historia zalogowanych godzin pracy</p>
+        </div>
+        <a href="{% url 'timesheet_add' %}"
+           class="inline-flex items-center gap-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 px-4 py-2 text-sm font-semibold text-white transition">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+            Dodaj wpis
+        </a>
+    </div>
+
+    {# Messages #}
+    {% if messages %}
+    {% for msg in messages %}
+    <div class="mb-4 rounded-lg border px-4 py-3
+        {% if msg.tags == 'error' %}bg-red-900/40 border-red-700 text-red-300{% else %}bg-emerald-900/40 border-emerald-700 text-emerald-300{% endif %}">
+        <p class="text-sm">{{ msg }}</p>
+    </div>
+    {% endfor %}
+    {% endif %}
+
+    {# Statystyki #}
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <div class="bg-gray-900 border border-gray-800 rounded-xl p-5">
+            <p class="text-xs uppercase tracking-widest text-gray-500 mb-1">Ten tydzień</p>
+            <p class="text-3xl font-bold text-emerald-400">{{ stats.week|floatformat:1 }}<span class="text-lg text-gray-500 ml-1">h</span></p>
+        </div>
+        <div class="bg-gray-900 border border-gray-800 rounded-xl p-5">
+            <p class="text-xs uppercase tracking-widest text-gray-500 mb-1">Ten miesiąc</p>
+            <p class="text-3xl font-bold text-blue-400">{{ stats.month|floatformat:1 }}<span class="text-lg text-gray-500 ml-1">h</span></p>
+        </div>
+        <div class="bg-gray-900 border border-gray-800 rounded-xl p-5">
+            <p class="text-xs uppercase tracking-widest text-gray-500 mb-1">Łącznie</p>
+            <p class="text-3xl font-bold text-white">{{ stats.total|floatformat:1 }}<span class="text-lg text-gray-500 ml-1">h</span></p>
+        </div>
+        <div class="bg-gray-900 border border-gray-800 rounded-xl p-5">
+            <p class="text-xs uppercase tracking-widest text-gray-500 mb-1">Zadań</p>
+            <p class="text-3xl font-bold text-purple-400">{{ stats.tasks }}</p>
+        </div>
+    </div>
+
+    {% if weeks or older %}
+
+        {% for week in weeks %}
+        <div class="mb-6">
+            <div class="flex items-center justify-between mb-2">
+                <h2 class="text-sm font-semibold text-gray-400">
+                    Tydzień {{ week.start|date:"d.m" }} – {{ week.end|date:"d.m.Y" }}
+                </h2>
+                <span class="text-sm font-semibold text-emerald-400">{{ week.total_hours|floatformat:1 }} h</span>
+            </div>
+            <div class="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="text-xs uppercase tracking-wider text-gray-600 border-b border-gray-800">
+                            <th class="text-left px-5 py-2.5 font-medium">Data</th>
+                            <th class="text-left px-5 py-2.5 font-medium hidden sm:table-cell">Projekt</th>
+                            <th class="text-left px-5 py-2.5 font-medium">Zadanie</th>
+                            <th class="text-left px-5 py-2.5 font-medium">Godz.</th>
+                            <th class="text-left px-5 py-2.5 font-medium hidden md:table-cell">Opis</th>
+                            <th class="text-left px-5 py-2.5 font-medium">Status</th>
+                            <th class="px-5 py-2.5"></th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-800">
+                        {% for entry in week.entries %}
+                        {% with status=entry.approval_status %}
+                        <tr class="transition {% if status == 'rejected' %}bg-red-950/10 hover:bg-red-950/20{% else %}hover:bg-gray-800/40{% endif %}">
+                            <td class="px-5 py-3 text-gray-300 whitespace-nowrap">{{ entry.date|date:"d.m.Y" }}</td>
+                            <td class="px-5 py-3 text-gray-400 hidden sm:table-cell">{{ entry.project.name }}</td>
+                            <td class="px-5 py-3 text-gray-300">{{ entry.task.title|default:"—" }}</td>
+                            <td class="px-5 py-3 font-semibold whitespace-nowrap
+                                {% if status == 'approved' %}text-emerald-400
+                                {% elif status == 'rejected' %}text-red-400
+                                {% else %}text-yellow-400{% endif %}">
+                                {{ entry.hours|floatformat:1 }} h
+                            </td>
+                            <td class="px-5 py-3 hidden md:table-cell max-w-xs">
+                                <div class="text-gray-500 truncate">{{ entry.description|truncatechars:50 }}</div>
+                                {% if status == 'rejected' and entry.rejection_reason %}
+                                <div class="mt-1 text-xs text-red-400 italic">Powód: {{ entry.rejection_reason|truncatechars:50 }}</div>
+                                {% endif %}
+                            </td>
+                            <td class="px-5 py-3">
+                                {% if status == 'approved' %}
+                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-emerald-900/60 text-emerald-300">
+                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                    Zatwierdzony
+                                </span>
+                                {% elif status == 'rejected' %}
+                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-red-900/60 text-red-300"
+                                      title="{{ entry.rejection_reason }}">
+                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                                    Odrzucony
+                                </span>
+                                {% else %}
+                                <span class="px-2 py-0.5 rounded-full text-xs bg-yellow-900/50 text-yellow-400">Oczekuje</span>
+                                {% endif %}
+                            </td>
+                            <td class="px-5 py-3">
+                                <div class="flex items-center justify-end gap-3">
+                                    {% if status == 'approved' %}
+                                    <span class="text-xs text-gray-600 italic">Zablokowane</span>
+                                    {% elif status == 'rejected' %}
+                                    <a href="{% url 'timesheet_edit' entry.pk %}" class="text-xs text-red-400 hover:text-red-300 font-medium transition">Popraw</a>
+                                    {% else %}
+                                    <a href="{% url 'timesheet_edit' entry.pk %}" class="text-xs text-indigo-500 hover:text-indigo-400 transition">Edytuj</a>
+                                    <form method="post" action="{% url 'timesheet_delete' entry.pk %}"
+                                          onsubmit="return confirm('Usunąć ten wpis?')">
+                                        {% csrf_token %}
+                                        <button type="submit" class="text-xs text-gray-600 hover:text-red-400 transition cursor-pointer">Usuń</button>
+                                    </form>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% if status == 'rejected' and entry.rejection_reason %}
+                        <tr class="bg-red-950/10 border-0">
+                            <td colspan="7" class="px-5 pb-3 pt-0">
+                                <div class="flex items-start gap-2 rounded-lg bg-red-900/20 border border-red-900/40 px-3 py-2">
+                                    <svg class="w-3.5 h-3.5 text-red-400 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                    </svg>
+                                    <p class="text-xs text-red-300"><span class="font-medium">Powód odrzucenia:</span> {{ entry.rejection_reason }}</p>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endif %}
+                        {% endwith %}
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endfor %}
+
+        {% if older %}
+        <div class="mb-6">
+            <div class="flex items-center justify-between mb-2">
+                <h2 class="text-sm font-semibold text-gray-400">Starsze wpisy</h2>
+                <span class="text-sm font-semibold text-gray-500">{{ older|length }} wpisów</span>
+            </div>
+            <div class="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="text-xs uppercase tracking-wider text-gray-600 border-b border-gray-800">
+                            <th class="text-left px-5 py-2.5 font-medium">Data</th>
+                            <th class="text-left px-5 py-2.5 font-medium hidden sm:table-cell">Projekt</th>
+                            <th class="text-left px-5 py-2.5 font-medium">Zadanie</th>
+                            <th class="text-left px-5 py-2.5 font-medium">Godz.</th>
+                            <th class="text-left px-5 py-2.5 font-medium hidden md:table-cell">Opis</th>
+                            <th class="text-left px-5 py-2.5 font-medium">Status</th>
+                            <th class="px-5 py-2.5"></th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-800">
+                        {% for entry in older %}
+                        {% with status=entry.approval_status %}
+                        <tr class="transition {% if status == 'rejected' %}bg-red-950/10 hover:bg-red-950/20{% else %}hover:bg-gray-800/40{% endif %}">
+                            <td class="px-5 py-3 text-gray-300 whitespace-nowrap">{{ entry.date|date:"d.m.Y" }}</td>
+                            <td class="px-5 py-3 text-gray-400 hidden sm:table-cell">{{ entry.project.name }}</td>
+                            <td class="px-5 py-3 text-gray-300">{{ entry.task.title|default:"—" }}</td>
+                            <td class="px-5 py-3 font-semibold whitespace-nowrap
+                                {% if status == 'approved' %}text-emerald-400
+                                {% elif status == 'rejected' %}text-red-400
+                                {% else %}text-yellow-400{% endif %}">
+                                {{ entry.hours|floatformat:1 }} h
+                            </td>
+                            <td class="px-5 py-3 hidden md:table-cell max-w-xs">
+                                <div class="text-gray-500 truncate">{{ entry.description|truncatechars:50 }}</div>
+                                {% if status == 'rejected' and entry.rejection_reason %}
+                                <div class="mt-1 text-xs text-red-400 italic">Powód: {{ entry.rejection_reason|truncatechars:50 }}</div>
+                                {% endif %}
+                            </td>
+                            <td class="px-5 py-3">
+                                {% if status == 'approved' %}
+                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-emerald-900/60 text-emerald-300">
+                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                    Zatwierdzony
+                                </span>
+                                {% elif status == 'rejected' %}
+                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-red-900/60 text-red-300"
+                                      title="{{ entry.rejection_reason }}">
+                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                                    Odrzucony
+                                </span>
+                                {% else %}
+                                <span class="px-2 py-0.5 rounded-full text-xs bg-yellow-900/50 text-yellow-400">Oczekuje</span>
+                                {% endif %}
+                            </td>
+                            <td class="px-5 py-3">
+                                <div class="flex items-center justify-end gap-3">
+                                    {% if status == 'approved' %}
+                                    <span class="text-xs text-gray-600 italic">Zablokowane</span>
+                                    {% elif status == 'rejected' %}
+                                    <a href="{% url 'timesheet_edit' entry.pk %}" class="text-xs text-red-400 hover:text-red-300 font-medium transition">Popraw</a>
+                                    {% else %}
+                                    <a href="{% url 'timesheet_edit' entry.pk %}" class="text-xs text-indigo-500 hover:text-indigo-400 transition">Edytuj</a>
+                                    <form method="post" action="{% url 'timesheet_delete' entry.pk %}"
+                                          onsubmit="return confirm('Usunąć ten wpis?')">
+                                        {% csrf_token %}
+                                        <button type="submit" class="text-xs text-gray-600 hover:text-red-400 transition cursor-pointer">Usuń</button>
+                                    </form>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% if status == 'rejected' and entry.rejection_reason %}
+                        <tr class="bg-red-950/10 border-0">
+                            <td colspan="7" class="px-5 pb-3 pt-0">
+                                <div class="flex items-start gap-2 rounded-lg bg-red-900/20 border border-red-900/40 px-3 py-2">
+                                    <svg class="w-3.5 h-3.5 text-red-400 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                    </svg>
+                                    <p class="text-xs text-red-300"><span class="font-medium">Powód odrzucenia:</span> {{ entry.rejection_reason }}</p>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endif %}
+                        {% endwith %}
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+
+    {% else %}
+    <div class="bg-gray-900 border border-dashed border-gray-700 rounded-xl flex flex-col items-center justify-center py-16 text-center">
+        <svg class="w-10 h-10 text-gray-700 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+        <p class="text-gray-500 font-medium mb-1">Brak wpisów</p>
+        <p class="text-sm text-gray-600 mb-4">Zaloguj pierwsze godziny pracy</p>
+        <a href="{% url 'timesheet_add' %}" class="inline-flex items-center gap-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 px-4 py-2 text-sm font-semibold text-white transition">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+            Dodaj wpis
+        </a>
+    </div>
+    {% endif %}
+
+</main>
+{% endblock %}

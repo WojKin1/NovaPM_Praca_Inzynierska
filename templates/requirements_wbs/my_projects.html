@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+{% block title %}Moje projekty — Wymagania — NovaPM{% endblock %}
+
+{% block content %}
+<nav class="bg-gray-900 border-b border-gray-800 px-6 py-3 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+        <div class="flex items-center justify-center w-8 h-8 rounded-lg bg-amber-600">
+            <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+            </svg>
+        </div>
+        <span class="font-bold text-white text-lg tracking-tight">NovaPM</span>
+        <div class="hidden sm:flex items-center gap-1 text-sm ml-2">
+            <a href="{% url 'my_requirements_projects' %}" class="px-3 py-1 rounded-md text-white bg-gray-800 font-medium">Moje projekty</a>
+            <a href="{% url 'my_tasks' %}" class="px-3 py-1 rounded-md text-gray-400 hover:text-white hover:bg-gray-800 transition">Moje zadania</a>
+            <a href="{% url 'my_timesheet' %}" class="px-3 py-1 rounded-md text-gray-400 hover:text-white hover:bg-gray-800 transition">Timesheet</a>
+            <a href="{% url 'cr_select_project' %}" class="px-3 py-1 rounded-md text-gray-400 hover:text-white hover:bg-gray-800 transition">Złóż wniosek</a>
+        </div>
+    </div>
+    <div class="flex items-center gap-4">
+        <div class="text-right hidden sm:block">
+            <p class="text-sm font-medium text-gray-200">{{ request.user.get_full_name|default:request.user.username }}</p>
+            <p class="text-xs text-amber-400">{{ request.user.get_role_display }}</p>
+        </div>
+        <a href="{% url 'user_profile' %}"
+           class="text-xs text-gray-500 hover:text-gray-300 transition">Mój profil</a>
+        <form method="post" action="{% url 'logout' %}">{% csrf_token %}
+            <button type="submit" class="rounded-lg bg-gray-800 hover:bg-gray-700 border border-gray-700 px-3 py-1.5 text-xs font-medium text-gray-300 transition cursor-pointer">Wyloguj</button>
+        </form>
+    </div>
+</nav>
+
+<main class="max-w-5xl mx-auto px-6 py-8">
+
+    <div class="mb-8">
+        <h1 class="text-2xl font-bold text-white">Moje projekty</h1>
+        <p class="text-sm text-gray-400 mt-0.5">Wymagania w projektach, do których należysz</p>
+    </div>
+
+    {% if project_cards %}
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+        {% for card in project_cards %}
+        <a href="{% url 'project_requirements' project_pk=card.project.pk %}"
+           class="bg-gray-900 border border-gray-800 rounded-xl p-5 hover:border-amber-700/60 transition block group">
+
+            <div class="flex items-start justify-between gap-3 mb-4">
+                <div>
+                    <h2 class="text-base font-semibold text-white group-hover:text-amber-400 transition">{{ card.project.name }}</h2>
+                    <p class="text-xs text-gray-500 mt-0.5">{{ card.project.client_name }}</p>
+                </div>
+                {% if card.project.status == 'INITIATION' %}
+                    <span class="px-2 py-0.5 rounded-full text-xs font-medium bg-gray-700 text-gray-300 shrink-0">Inicjacja</span>
+                {% elif card.project.status == 'PLANNING' %}
+                    <span class="px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-900/60 text-yellow-300 shrink-0">Planowanie</span>
+                {% elif card.project.status == 'EXECUTION' %}
+                    <span class="px-2 py-0.5 rounded-full text-xs font-medium bg-blue-900/60 text-blue-300 shrink-0">Realizacja</span>
+                {% elif card.project.status == 'MONITORING' %}
+                    <span class="px-2 py-0.5 rounded-full text-xs font-medium bg-purple-900/60 text-purple-300 shrink-0">Monitorowanie</span>
+                {% elif card.project.status == 'CLOSED' %}
+                    <span class="px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-900/60 text-emerald-300 shrink-0">Zamknięty</span>
+                {% endif %}
+            </div>
+
+            <div class="grid grid-cols-4 gap-2 mb-3">
+                <div class="bg-gray-800 rounded-lg p-2.5 text-center">
+                    <p class="text-lg font-bold text-gray-200">{{ card.stats.total }}</p>
+                    <p class="text-xs text-gray-500 mt-0.5">Łącznie</p>
+                </div>
+                <div class="bg-gray-800 rounded-lg p-2.5 text-center">
+                    <p class="text-lg font-bold text-gray-400">{{ card.stats.draft }}</p>
+                    <p class="text-xs text-gray-500 mt-0.5">Szkic</p>
+                </div>
+                <div class="bg-emerald-900/30 rounded-lg p-2.5 text-center">
+                    <p class="text-lg font-bold text-emerald-400">{{ card.stats.approved }}</p>
+                    <p class="text-xs text-gray-500 mt-0.5">Zatw.</p>
+                </div>
+                <div class="bg-indigo-900/30 rounded-lg p-2.5 text-center">
+                    <p class="text-lg font-bold text-indigo-400">{{ card.stats.implemented }}</p>
+                    <p class="text-xs text-gray-500 mt-0.5">Realiz.</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-2 pt-2 border-t border-gray-800">
+                <a href="{% url 'project_requirements' project_pk=card.project.pk %}"
+                   class="text-xs text-amber-400 hover:text-amber-300 transition font-medium">Wymagania →</a>
+                <span class="text-gray-700">·</span>
+                <a href="{% url 'project_wbs' project_pk=card.project.pk %}"
+                   class="text-xs text-indigo-400 hover:text-indigo-300 transition font-medium">WBS ({{ card.stats.wbs_total }}) →</a>
+            </div>
+        </a>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="bg-gray-900 border border-gray-800 rounded-xl px-6 py-12 text-center">
+        <svg class="w-10 h-10 text-gray-700 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+        </svg>
+        <p class="text-sm text-gray-600">Nie jesteś aktywnym członkiem żadnego projektu.</p>
+    </div>
+    {% endif %}
+
+</main>
+{% endblock %}

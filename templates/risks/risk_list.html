@@ -1,0 +1,214 @@
+{% extends "base.html" %}
+
+{% block title %}Rejestr ryzyk — {{ project.name }} — NovaPM{% endblock %}
+
+{% block content %}
+
+{# ── Navbar ── #}
+<nav class="bg-gray-900 border-b border-gray-800 px-6 py-3 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+        <div class="flex items-center justify-center w-8 h-8 rounded-lg bg-indigo-600">
+            <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+            </svg>
+        </div>
+        <span class="font-bold text-white text-lg tracking-tight">NovaPM</span>
+    </div>
+    <div class="flex items-center gap-4">
+        <div class="text-right hidden sm:block">
+            <p class="text-sm font-medium text-gray-200">{{ request.user.get_full_name|default:request.user.username }}</p>
+            <p class="text-xs text-indigo-400">{{ request.user.get_role_display }}</p>
+        </div>
+        <a href="{% url 'user_profile' %}"
+           class="text-xs text-gray-500 hover:text-gray-300 transition">Mój profil</a>
+        <form method="post" action="{% url 'logout' %}">
+            {% csrf_token %}
+            <button type="submit" class="rounded-lg bg-gray-800 hover:bg-gray-700 border border-gray-700 px-3 py-1.5 text-xs font-medium text-gray-300 transition cursor-pointer">Wyloguj</button>
+        </form>
+    </div>
+</nav>
+
+<main class="max-w-7xl mx-auto px-6 py-8">
+
+    {# Powrót + nagłówek #}
+    <div class="mb-6">
+        <a href="{% url 'project_detail' project.pk %}" class="inline-flex items-center gap-1.5 text-sm text-gray-400 hover:text-indigo-400 transition mb-4">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+            Wróć do projektu
+        </a>
+        <div class="flex items-center justify-between">
+            <div>
+                <h1 class="text-2xl font-bold text-white">Rejestr ryzyk</h1>
+                <p class="text-sm text-gray-400 mt-0.5">Projekt: <span class="text-indigo-400">{{ project.name }}</span></p>
+            </div>
+            {% if is_pm_or_staff or is_analyst %}
+            <a href="{% url 'risk_create' project_pk=project.pk %}"
+               class="inline-flex items-center gap-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 px-4 py-2 text-sm font-semibold text-white transition">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                Nowe ryzyko
+            </a>
+            {% endif %}
+        </div>
+    </div>
+
+    {# ── Macierz ryzyka 5×5 ── #}
+    <div class="bg-gray-900 border border-gray-800 rounded-xl p-5 mb-8">
+        <h2 class="text-sm font-semibold uppercase tracking-wider text-gray-500 mb-4">Macierz ryzyka</h2>
+        <div class="flex gap-4 items-start">
+            {# Etykieta osi Y #}
+            <div class="flex flex-col justify-between h-[200px] text-xs text-gray-500 text-right shrink-0 py-1">
+                <span>5</span><span>4</span><span>3</span><span>2</span><span>1</span>
+            </div>
+            <div class="flex-1">
+                <div class="grid" style="grid-template-columns: repeat(5, 1fr); grid-template-rows: repeat(5, 40px);">
+                    {% for p in "54321" %}{% for i in "12345" %}
+                    {% with pi=p|add:i %}
+                    {# Kolor komórki wg p*i — obliczamy przez data atrybuty i inline style #}
+                    {% with pint=p|add:"0" iint=i|add:"0" %}
+                    <div class="border border-gray-800 relative flex items-center justify-center text-xs
+                        {% if p == '5' and i == '5' %}bg-red-800/70
+                        {% elif p == '5' and i == '4' %}bg-red-800/70
+                        {% elif p == '5' and i == '3' %}bg-red-700/50
+                        {% elif p == '5' and i == '2' %}bg-yellow-800/50
+                        {% elif p == '5' and i == '1' %}bg-yellow-700/40
+                        {% elif p == '4' and i == '5' %}bg-red-800/70
+                        {% elif p == '4' and i == '4' %}bg-red-700/50
+                        {% elif p == '4' and i == '3' %}bg-yellow-800/50
+                        {% elif p == '4' and i == '2' %}bg-yellow-700/40
+                        {% elif p == '4' and i == '1' %}bg-green-900/40
+                        {% elif p == '3' and i == '5' %}bg-red-700/50
+                        {% elif p == '3' and i == '4' %}bg-yellow-800/50
+                        {% elif p == '3' and i == '3' %}bg-yellow-700/40
+                        {% elif p == '3' and i == '2' %}bg-green-900/40
+                        {% elif p == '3' and i == '1' %}bg-green-900/40
+                        {% elif p == '2' and i == '5' %}bg-yellow-700/40
+                        {% elif p == '2' and i == '4' %}bg-yellow-700/40
+                        {% elif p == '2' and i == '3' %}bg-green-900/40
+                        {% elif p == '2' and i == '2' %}bg-green-900/40
+                        {% elif p == '2' and i == '1' %}bg-green-900/30
+                        {% elif p == '1' %}bg-green-900/30
+                        {% endif %}"
+                         data-p="{{ p }}" data-i="{{ i }}">
+                    </div>
+                    {% endwith %}{% endwith %}
+                    {% endfor %}{% endfor %}
+                </div>
+                {# Etykiety osi X #}
+                <div class="grid mt-1 text-xs text-gray-500 text-center" style="grid-template-columns: repeat(5, 1fr);">
+                    <span>1</span><span>2</span><span>3</span><span>4</span><span>5</span>
+                </div>
+                <p class="text-xs text-gray-600 mt-1 text-center">Wpływ →</p>
+            </div>
+            {# Legenda #}
+            <div class="shrink-0 flex flex-col gap-2 text-xs text-gray-400 ml-2 justify-center">
+                <div class="flex items-center gap-2"><span class="w-3 h-3 rounded bg-green-900/60 inline-block"></span>Niskie (≤6)</div>
+                <div class="flex items-center gap-2"><span class="w-3 h-3 rounded bg-yellow-800/60 inline-block"></span>Średnie (7–12)</div>
+                <div class="flex items-center gap-2"><span class="w-3 h-3 rounded bg-red-800/60 inline-block"></span>Wysokie (>12)</div>
+                {% if matrix_dots %}
+                <div class="flex items-center gap-2 mt-2"><span class="w-3 h-3 rounded-full bg-white inline-block"></span>Aktywne ryzyko</div>
+                {% endif %}
+            </div>
+        </div>
+        {# Nakładka z kropkami — lista aktywnych ryzyk #}
+        {% if matrix_dots %}
+        <div class="mt-3 flex flex-wrap gap-2">
+            {% for dot in matrix_dots %}
+            <span class="inline-flex items-center gap-1.5 text-xs px-2 py-0.5 rounded-full
+                         {% if dot.level > 12 %}bg-red-900/60 text-red-300
+                         {% elif dot.level > 6 %}bg-yellow-900/60 text-yellow-300
+                         {% else %}bg-green-900/50 text-green-300{% endif %}">
+                <span class="font-bold">P{{ dot.p }}×I{{ dot.i }}={{ dot.level }}</span>
+                {{ dot.title|truncatechars:30 }}
+            </span>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+
+    {# ── Tabela ryzyk ── #}
+    <div class="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
+        {% if risks %}
+        <table class="w-full text-sm">
+            <thead>
+                <tr class="border-b border-gray-800 text-xs uppercase tracking-wider text-gray-500">
+                    <th class="text-left px-5 py-3 font-medium w-8">#</th>
+                    <th class="text-left px-5 py-3 font-medium">Nazwa</th>
+                    <th class="text-center px-3 py-3 font-medium">P</th>
+                    <th class="text-center px-3 py-3 font-medium">W</th>
+                    <th class="text-center px-3 py-3 font-medium">Poziom</th>
+                    <th class="text-left px-5 py-3 font-medium">Status</th>
+                    <th class="text-left px-5 py-3 font-medium hidden md:table-cell">Właściciel</th>
+                    {% if is_pm_or_staff or is_analyst %}<th class="text-right px-5 py-3 font-medium">Akcje</th>{% endif %}
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-800">
+                {% for risk in risks %}
+                {% with level=risk.risk_level %}
+                <tr class="hover:bg-gray-800/40 transition">
+                    <td class="px-5 py-3 text-gray-600 text-xs">{{ risk.pk }}</td>
+                    <td class="px-5 py-3">
+                        <p class="text-gray-200 font-medium">{{ risk.title }}</p>
+                        {% if risk.description %}
+                        <p class="text-xs text-gray-500 truncate max-w-xs">{{ risk.description }}</p>
+                        {% endif %}
+                    </td>
+                    <td class="px-3 py-3 text-center text-gray-300">{{ risk.probability }}</td>
+                    <td class="px-3 py-3 text-center text-gray-300">{{ risk.impact }}</td>
+                    <td class="px-3 py-3 text-center">
+                        <span class="inline-block w-8 text-center text-xs font-bold rounded px-1.5 py-0.5
+                                     {% if level > 12 %}bg-red-900/60 text-red-300
+                                     {% elif level > 6 %}bg-yellow-900/60 text-yellow-300
+                                     {% else %}bg-green-900/50 text-green-300{% endif %}">
+                            {{ level }}
+                        </span>
+                    </td>
+                    <td class="px-5 py-3">
+                        {% if risk.status == 'IDENTIFIED' %}
+                            <span class="px-2 py-0.5 rounded-full text-xs bg-gray-700 text-gray-300">Zidentyfikowane</span>
+                        {% elif risk.status == 'ANALYSED' %}
+                            <span class="px-2 py-0.5 rounded-full text-xs bg-blue-900/60 text-blue-300">Analizowane</span>
+                        {% elif risk.status == 'MITIGATED' %}
+                            <span class="px-2 py-0.5 rounded-full text-xs bg-teal-900/60 text-teal-300">Mitygowane</span>
+                        {% elif risk.status == 'CLOSED' %}
+                            <span class="px-2 py-0.5 rounded-full text-xs bg-emerald-900/60 text-emerald-300">Zamknięte</span>
+                        {% endif %}
+                    </td>
+                    <td class="px-5 py-3 text-gray-400 hidden md:table-cell">{{ risk.owner.username }}</td>
+                    {% if is_pm_or_staff or is_analyst %}
+                    <td class="px-5 py-3 text-right">
+                        <div class="inline-flex items-center gap-2">
+                            {% if risk.status != 'CLOSED' %}
+                            <a href="{% url 'risk_edit' project_pk=project.pk pk=risk.pk %}"
+                               class="text-xs text-gray-400 hover:text-indigo-400 transition">Edytuj</a>
+                            {% if is_pm_or_staff %}
+                            <form method="post" action="{% url 'risk_close' project_pk=project.pk pk=risk.pk %}"
+                                  onsubmit="return confirm('Zamknąć to ryzyko?')">
+                                {% csrf_token %}
+                                <button type="submit" class="text-xs text-gray-400 hover:text-emerald-400 transition cursor-pointer">Zamknij</button>
+                            </form>
+                            {% endif %}
+                            {% else %}
+                            <span class="text-xs text-gray-700">—</span>
+                            {% endif %}
+                        </div>
+                    </td>
+                    {% endif %}
+                </tr>
+                {% endwith %}
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="flex flex-col items-center justify-center py-16 text-center">
+            <svg class="w-12 h-12 text-gray-700 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+            </svg>
+            <p class="text-gray-500 font-medium">Brak ryzyk</p>
+            <p class="text-gray-600 text-sm mt-1">Nie zarejestrowano jeszcze żadnych ryzyk dla tego projektu.</p>
+        </div>
+        {% endif %}
+    </div>
+
+</main>
+{% endblock %}

@@ -1,0 +1,177 @@
+{% extends "base.html" %}
+{% block title %}Do testowania — NovaPM{% endblock %}
+
+{% block content %}
+<nav class="bg-gray-900 border-b border-gray-800 px-6 py-3 flex items-center justify-between">
+    <div class="flex items-center gap-4">
+        <div class="flex items-center gap-3">
+            <div class="flex items-center justify-center w-8 h-8 rounded-lg bg-violet-600">
+                <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+            </div>
+            <span class="font-bold text-white text-lg tracking-tight">NovaPM</span>
+        </div>
+        <div class="hidden sm:flex items-center gap-1 text-sm">
+            <a href="{% url 'my_tasks' %}" class="px-3 py-1 rounded-md text-gray-400 hover:text-white hover:bg-gray-800 transition">Moje zadania</a>
+            <a href="{% url 'my_reviews' %}" class="px-3 py-1 rounded-md text-white bg-gray-800 font-medium">Do testowania</a>
+            <a href="{% url 'my_timesheet' %}" class="px-3 py-1 rounded-md text-gray-400 hover:text-white hover:bg-gray-800 transition">Timesheet</a>
+            <a href="{% url 'cr_select_project' %}" class="px-3 py-1 rounded-md text-gray-400 hover:text-white hover:bg-gray-800 transition">Złóż wniosek</a>
+            <a href="{% url 'tester_report' %}" class="px-3 py-1 rounded-md text-gray-400 hover:text-white hover:bg-gray-800 transition">Mój raport QA</a>
+        </div>
+    </div>
+    <div class="flex items-center gap-4">
+        <div class="text-right hidden sm:block">
+            <p class="text-sm font-medium text-gray-200">{{ request.user.get_full_name|default:request.user.username }}</p>
+            <p class="text-xs text-violet-400">{{ request.user.get_role_display }}</p>
+        </div>
+        <a href="{% url 'user_profile' %}"
+           class="text-xs text-gray-500 hover:text-gray-300 transition">Mój profil</a>
+        <form method="post" action="{% url 'logout' %}">{% csrf_token %}
+            <button type="submit" class="rounded-lg bg-gray-800 hover:bg-gray-700 border border-gray-700 px-3 py-1.5 text-xs font-medium text-gray-300 transition cursor-pointer">Wyloguj</button>
+        </form>
+    </div>
+</nav>
+
+<main class="max-w-4xl mx-auto px-6 py-8">
+
+    <div class="mb-8">
+        <h1 class="text-2xl font-bold text-white">Zadania do testowania</h1>
+        <p class="text-sm text-gray-400 mt-0.5">Zadania oczekujące na Twoją weryfikację</p>
+    </div>
+
+    {# Statystyki #}
+    <div class="grid grid-cols-3 gap-4 mb-8">
+        <div class="bg-gray-900 border border-gray-800 rounded-xl p-5 text-center">
+            <p class="text-3xl font-bold text-violet-400">{{ stats.pending }}</p>
+            <p class="text-xs uppercase tracking-widest text-gray-500 mt-1">Do sprawdzenia</p>
+        </div>
+        <div class="bg-gray-900 border border-red-900/40 rounded-xl p-5 text-center">
+            <p class="text-3xl font-bold {% if stats.urgent %}text-red-400{% else %}text-gray-600{% endif %}">{{ stats.urgent }}</p>
+            <p class="text-xs uppercase tracking-widest text-gray-500 mt-1">Pilne</p>
+        </div>
+        <div class="bg-gray-900 border border-emerald-900/40 rounded-xl p-5 text-center">
+            <p class="text-3xl font-bold text-emerald-400">{{ stats.reviewed_today }}</p>
+            <p class="text-xs uppercase tracking-widest text-gray-500 mt-1">Sprawdzonych dziś</p>
+        </div>
+    </div>
+
+    {# Lista zadań #}
+    {% if tasks %}
+    <div class="flex flex-col gap-4">
+        {% for task in tasks %}
+        {% with last_review=task.reviews.all.0 rejected_count=task.reviews.all|length %}
+        <div class="bg-gray-900 border border-gray-800 rounded-xl p-5">
+
+            {# Nagłówek #}
+            <div class="flex items-start justify-between gap-4 mb-3">
+                <div class="flex-1 min-w-0">
+                    <p class="text-base font-semibold text-white leading-snug">{{ task.title }}</p>
+                    <div class="flex items-center gap-2 mt-1 flex-wrap">
+                        <span class="px-2 py-0.5 rounded-md text-xs bg-indigo-900/40 text-indigo-300 font-medium">{{ task.project.name }}</span>
+                        {% if task.assigned_to %}
+                        <span class="flex items-center gap-1 text-xs text-gray-500">
+                            <span class="inline-flex items-center justify-center w-5 h-5 rounded-full bg-gray-700 text-gray-300 text-xs font-bold">{{ task.assigned_to.get_full_name|default:task.assigned_to.username|slice:":1"|upper }}</span>
+                            {{ task.assigned_to.get_full_name|default:task.assigned_to.username }}
+                        </span>
+                        {% endif %}
+                        <span class="text-xs {% if task.due_date < today %}text-red-400 font-medium{% else %}text-gray-500{% endif %}">
+                            Termin: {{ task.due_date|date:"d.m.Y" }}{% if task.due_date < today %} ⚠{% endif %}
+                        </span>
+                    </div>
+                </div>
+                {% if task.priority == 'CRITICAL' %}
+                <span class="shrink-0 px-2 py-0.5 rounded text-xs bg-red-900/60 text-red-300 font-medium">Krytyczny</span>
+                {% elif task.priority == 'HIGH' %}
+                <span class="shrink-0 px-2 py-0.5 rounded text-xs bg-orange-900/60 text-orange-300 font-medium">Wysoki</span>
+                {% endif %}
+            </div>
+
+            {# Historia odrzuceń #}
+            {% if task.reviews.all %}
+            {% with reject_count=task.reviews.all|length %}
+            <div class="mb-3 flex items-center gap-2">
+                <span class="px-2 py-0.5 rounded text-xs bg-red-900/40 text-red-400 font-medium">Odrzucane {{ reject_count }}× wcześniej</span>
+            </div>
+            {% endwith %}
+            {% if last_review and last_review.comment %}
+            <div class="mb-3 rounded-lg bg-gray-800/60 border border-gray-700/60 px-3 py-2">
+                <p class="text-xs text-gray-500 mb-0.5">Ostatni komentarz testera:</p>
+                <p class="text-xs text-gray-300 italic">{{ last_review.comment }}</p>
+            </div>
+            {% endif %}
+            {% endif %}
+
+            {# Przyciski akcji #}
+            <div class="flex items-center gap-2 pt-3 border-t border-gray-800">
+                {# Zatwierdź #}
+                <form method="post" action="{% url 'task_review' pk=task.pk %}"
+                      onsubmit="return confirm('Zatwierdzić zadanie „{{ task.title }}"?')">
+                    {% csrf_token %}
+                    <input type="hidden" name="result" value="APPROVED">
+                    <button type="submit"
+                            class="inline-flex items-center gap-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-600 px-4 py-2 text-xs font-semibold text-white transition cursor-pointer">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                        Zatwierdź
+                    </button>
+                </form>
+
+                {# Odrzuć — przycisk toggle #}
+                <button type="button"
+                        onclick="toggleReject({{ task.pk }})"
+                        class="inline-flex items-center gap-1.5 rounded-lg bg-red-900/60 hover:bg-red-800/60 border border-red-800/60 px-4 py-2 text-xs font-semibold text-red-300 hover:text-red-200 transition cursor-pointer">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                    Odrzuć z komentarzem
+                </button>
+            </div>
+
+            {# Inline formularz odrzucenia (ukryty) #}
+            <div id="reject-form-{{ task.pk }}" class="hidden mt-3 pt-3 border-t border-gray-800">
+                <form method="post" action="{% url 'task_review' pk=task.pk %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="result" value="REJECTED">
+                    <label class="block text-xs font-medium text-gray-400 mb-1">Komentarz dla developera <span class="text-red-500">*</span></label>
+                    <textarea name="comment" rows="3" required
+                              placeholder="Opisz co należy poprawić..."
+                              class="w-full rounded-lg bg-gray-800 border border-gray-700 px-3 py-2 text-sm text-gray-200 placeholder-gray-600 focus:outline-none focus:border-red-500 resize-none"></textarea>
+                    <div class="flex gap-2 mt-2">
+                        <button type="submit"
+                                class="inline-flex items-center gap-1.5 rounded-lg bg-red-700 hover:bg-red-600 px-4 py-2 text-xs font-semibold text-white transition cursor-pointer">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
+                            Wyślij odrzucenie
+                        </button>
+                        <button type="button" onclick="toggleReject({{ task.pk }})"
+                                class="rounded-lg bg-gray-800 hover:bg-gray-700 border border-gray-700 px-4 py-2 text-xs font-medium text-gray-400 transition cursor-pointer">
+                            Anuluj
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+        </div>
+        {% endwith %}
+        {% endfor %}
+    </div>
+
+    {% else %}
+    <div class="bg-gray-900 border border-gray-800 rounded-xl px-6 py-16 text-center">
+        <svg class="w-12 h-12 text-emerald-700/50 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+        <p class="text-base font-semibold text-gray-500 mb-1">Brak zadań do testowania.</p>
+        <p class="text-sm text-gray-600">Świetna robota!</p>
+    </div>
+    {% endif %}
+
+</main>
+
+<script>
+function toggleReject(taskId) {
+    const el = document.getElementById('reject-form-' + taskId);
+    el.classList.toggle('hidden');
+    if (!el.classList.contains('hidden')) {
+        el.querySelector('textarea').focus();
+    }
+}
+</script>
+{% endblock %}

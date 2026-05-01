@@ -1,0 +1,144 @@
+{% extends "base.html" %}
+{% block title %}Nowy wpis czasu pracy — NovaPM{% endblock %}
+
+{% block content %}
+<nav class="bg-gray-900 border-b border-gray-800 px-6 py-3 flex items-center justify-between">
+    <div class="flex items-center gap-4">
+        <div class="flex items-center gap-3">
+            <div class="flex items-center justify-center w-8 h-8 rounded-lg {% if request.user.role == 'PM' or request.user.is_staff %}bg-indigo-600{% elif request.user.role == 'ANALYST' %}bg-amber-600{% else %}bg-emerald-600{% endif %}">
+                <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+            </div>
+            <span class="font-bold text-white text-lg tracking-tight">NovaPM</span>
+        </div>
+        <div class="hidden sm:flex items-center gap-1 text-sm">
+            {% if request.user.role == 'PM' or request.user.is_staff %}
+            <a href="{% url 'project_list' %}" class="px-3 py-1 rounded-md text-gray-400 hover:text-white hover:bg-gray-800 transition">Projekty</a>
+            <a href="{% url 'my_timesheet' %}" class="px-3 py-1 rounded-md text-gray-400 hover:text-white hover:bg-gray-800 transition">Timesheet</a>
+            {% elif request.user.role == 'ANALYST' %}
+            <a href="{% url 'my_requirements_projects' %}" class="px-3 py-1 rounded-md text-gray-400 hover:text-white hover:bg-gray-800 transition">Moje projekty</a>
+            <a href="{% url 'my_tasks' %}" class="px-3 py-1 rounded-md text-gray-400 hover:text-white hover:bg-gray-800 transition">Moje zadania</a>
+            <a href="{% url 'my_timesheet' %}" class="px-3 py-1 rounded-md text-gray-400 hover:text-white hover:bg-gray-800 transition">Timesheet</a>
+            {% else %}
+            <a href="{% url 'my_tasks' %}" class="px-3 py-1 rounded-md text-gray-400 hover:text-white hover:bg-gray-800 transition">Moje zadania</a>
+            <a href="{% url 'my_timesheet' %}" class="px-3 py-1 rounded-md text-gray-400 hover:text-white hover:bg-gray-800 transition">Timesheet</a>
+            <a href="{% url 'cr_select_project' %}" class="px-3 py-1 rounded-md text-gray-400 hover:text-white hover:bg-gray-800 transition">Złóż wniosek</a>
+            {% endif %}
+        </div>
+    </div>
+    <div class="flex items-center gap-4">
+        <div class="text-right hidden sm:block">
+            <p class="text-sm font-medium text-gray-200">{{ request.user.get_full_name|default:request.user.username }}</p>
+            <p class="text-xs {% if request.user.role == 'PM' or request.user.is_staff %}text-indigo-400{% elif request.user.role == 'ANALYST' %}text-amber-400{% else %}text-emerald-400{% endif %}">{{ request.user.get_role_display }}</p>
+        </div>
+        <a href="{% url 'user_profile' %}"
+           class="text-xs text-gray-500 hover:text-gray-300 transition">Mój profil</a>
+        <form method="post" action="{% url 'logout' %}">{% csrf_token %}
+            <button type="submit" class="rounded-lg bg-gray-800 hover:bg-gray-700 border border-gray-700 px-3 py-1.5 text-xs font-medium text-gray-300 transition cursor-pointer">Wyloguj</button>
+        </form>
+    </div>
+</nav>
+
+<main class="max-w-2xl mx-auto px-6 py-8">
+    <div class="mb-6">
+        <a href="{% url 'my_timesheet' %}" class="inline-flex items-center gap-1.5 text-sm text-gray-400 hover:text-emerald-400 transition">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+            Wróć do ewidencji
+        </a>
+    </div>
+
+    <div class="mb-6">
+        <h1 class="text-2xl font-bold text-white">{% if entry %}Edytuj wpis czasu pracy{% else %}Nowy wpis czasu pracy{% endif %}</h1>
+        {% if project %}<p class="text-sm text-gray-400 mt-0.5">Projekt: <span class="text-emerald-400">{{ project.name }}</span></p>{% endif %}
+    </div>
+
+    {% if not project %}
+    {# Krok 1 — wybór projektu #}
+    <div class="bg-gray-900 border border-gray-800 rounded-xl p-6">
+        <h2 class="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4">Wybierz projekt</h2>
+        {% if projects %}
+        <div class="flex flex-col gap-3">
+            {% for p in projects %}
+            <a href="{% url 'timesheet_add' %}?project={{ p.pk }}"
+               class="flex items-center justify-between rounded-lg bg-gray-800 hover:bg-gray-700 border border-gray-700 px-4 py-3 transition group">
+                <div>
+                    <p class="text-sm font-medium text-gray-200 group-hover:text-white">{{ p.name }}</p>
+                    <p class="text-xs text-gray-500 mt-0.5">{{ p.client_name }}</p>
+                </div>
+                <svg class="w-4 h-4 text-gray-600 group-hover:text-emerald-400 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                </svg>
+            </a>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="text-sm text-gray-500">Nie jesteś członkiem żadnego aktywnego projektu.</p>
+        {% endif %}
+    </div>
+
+    {% else %}
+    {# Krok 2 — formularz wpisu #}
+
+    {# Informacja o godzinach w tym tygodniu #}
+    <div class="bg-emerald-900/20 border border-emerald-800/40 rounded-lg px-4 py-3 mb-5 flex items-center gap-3">
+        <svg class="w-4 h-4 text-emerald-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+        <p class="text-sm text-emerald-300">Zalogowane w tym tygodniu: <span class="font-semibold">{{ week_hours|floatformat:1 }} h</span></p>
+    </div>
+
+    <form method="post" action="{% if entry %}{% url 'timesheet_edit' entry.pk %}{% else %}{% url 'timesheet_add' %}?project={{ project.pk }}{% endif %}" novalidate>
+        {% csrf_token %}
+        <div class="bg-gray-900 border border-gray-800 rounded-xl p-6">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+
+                {# Lewa #}
+                <div class="flex flex-col gap-5">
+                    <div>
+                        <label for="{{ form.task.id_for_label }}" class="block text-sm font-medium text-gray-300 mb-1">{{ form.task.label }}</label>
+                        {{ form.task }}
+                        {% for e in form.task.errors %}<p class="mt-1 text-xs text-red-400">{{ e }}</p>{% endfor %}
+                    </div>
+                    <div>
+                        <label for="{{ form.date.id_for_label }}" class="block text-sm font-medium text-gray-300 mb-1">{{ form.date.label }} <span class="text-red-500">*</span></label>
+                        {{ form.date }}
+                        {% for e in form.date.errors %}<p class="mt-1 text-xs text-red-400">{{ e }}</p>{% endfor %}
+                    </div>
+                </div>
+
+                {# Prawa #}
+                <div class="flex flex-col gap-5">
+                    <div>
+                        <label for="{{ form.hours.id_for_label }}" class="block text-sm font-medium text-gray-300 mb-1">{{ form.hours.label }} <span class="text-red-500">*</span></label>
+                        {{ form.hours }}
+                        <p class="text-xs text-gray-600 mt-1">Zakres: 0.5 – 24 godzin</p>
+                        {% for e in form.hours.errors %}<p class="mt-1 text-xs text-red-400">{{ e }}</p>{% endfor %}
+                    </div>
+                    <div>
+                        <label for="{{ form.description.id_for_label }}" class="block text-sm font-medium text-gray-300 mb-1">{{ form.description.label }} <span class="text-red-500">*</span></label>
+                        {{ form.description }}
+                        {% for e in form.description.errors %}<p class="mt-1 text-xs text-red-400">{{ e }}</p>{% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            {% if form.non_field_errors %}
+            <div class="mt-4 rounded-lg bg-red-900/40 border border-red-700 px-4 py-3">
+                {% for e in form.non_field_errors %}<p class="text-sm text-red-300">{{ e }}</p>{% endfor %}
+            </div>
+            {% endif %}
+
+            <div class="flex justify-end gap-3 mt-6 pt-5 border-t border-gray-800">
+                <a href="{% url 'my_timesheet' %}" class="rounded-lg bg-gray-800 hover:bg-gray-700 border border-gray-700 px-5 py-2.5 text-sm font-medium text-gray-300 transition">Anuluj</a>
+                <button type="submit" class="inline-flex items-center gap-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 px-5 py-2.5 text-sm font-semibold text-white transition cursor-pointer">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                    {% if entry %}Zapisz zmiany{% else %}Zapisz wpis{% endif %}
+                </button>
+            </div>
+        </div>
+    </form>
+    {% endif %}
+
+</main>
+{% endblock %}
