@@ -164,8 +164,8 @@ if _email_user:
     EMAIL_USE_SSL       = env.bool('EMAIL_USE_SSL', default=False)
     EMAIL_HOST_USER     = _email_user
     EMAIL_HOST_PASSWORD = env('EMAIL_HOST_PASSWORD', default='')
-    _from = env('DEFAULT_FROM_EMAIL', default='')
-    DEFAULT_FROM_EMAIL  = _from if _from else f'NovaPM <{_email_user}>'
+    EMAIL_TIMEOUT       = 10
+    DEFAULT_FROM_EMAIL  = env('DEFAULT_FROM_EMAIL', default=_email_user)
 else:
     EMAIL_BACKEND      = 'django.core.mail.backends.console.EmailBackend'
     DEFAULT_FROM_EMAIL = 'noreply@novapm.pl'

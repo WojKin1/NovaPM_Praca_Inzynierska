@@ -1,4 +1,5 @@
 import logging
+import threading
 
 from django.conf import settings
 from django.contrib import messages
@@ -143,22 +144,31 @@ def password_reset_request(request):
                     reverse('password_reset_confirm', args=[uid, token])
                 )
                 logger.info('Password reset URL generated: %s', reset_url)
-                try:
-                    send_mail(
-                        'Resetowanie hasła — NovaPM',
-                        (
-                            f'Witaj {user.get_full_name() or user.username},\n\n'
-                            f'Kliknij w poniższy link, aby zresetować hasło:\n\n'
-                            f'{reset_url}\n\n'
-                            f'Link jest jednorazowy i wygasa po 24 godzinach.\n\n'
-                            f'Jeśli nie prosiłeś/aś o reset hasła, zignoruj tę wiadomość.'
-                        ),
-                        settings.DEFAULT_FROM_EMAIL,
-                        [user.email],
-                    )
-                    logger.info('Password reset email sent to %r', user.email)
-                except Exception as exc:
-                    logger.error('Password reset email FAILED for %r: %s', user.email, exc, exc_info=True)
+
+                subject = 'Resetowanie hasła — NovaPM'
+                body = (
+                    f'Witaj {user.get_full_name() or user.username},\n\n'
+                    f'Kliknij w poniższy link, aby zresetować hasło:\n\n'
+                    f'{reset_url}\n\n'
+                    f'Link jest jednorazowy i wygasa po 24 godzinach.\n\n'
+                    f'Jeśli nie prosiłeś/aś o reset hasła, zignoruj tę wiadomość.'
+                )
+                from_email = settings.DEFAULT_FROM_EMAIL
+                recipient = [user.email]
+
+                def _send(subj, msg, frm, to):
+                    try:
+                        send_mail(subj, msg, frm, to)
+                        logger.info('Password reset email sent to %r', to)
+                    except Exception as exc:
+                        logger.error('Password reset email FAILED for %r: %s', to, exc, exc_info=True)
+
+                threading.Thread(
+                    target=_send,
+                    args=(subject, body, from_email, recipient),
+                    daemon=True,
+                ).start()
+
             sent = True
 
     return render(request, 'accounts/password_reset.html', {'sent': sent, 'error': error})
