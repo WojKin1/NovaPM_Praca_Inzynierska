@@ -158,10 +158,20 @@ def password_reset_request(request):
 
                 def _send(subj, msg, frm, to):
                     try:
+                        from django.conf import settings as s
+                        logger.warning(
+                            'EMAIL DEBUG: backend=%s host=%s port=%s user=%s from=%s to=%s',
+                            s.EMAIL_BACKEND,
+                            getattr(s, 'EMAIL_HOST', '?'),
+                            getattr(s, 'EMAIL_PORT', '?'),
+                            getattr(s, 'EMAIL_HOST_USER', '?'),
+                            frm,
+                            to,
+                        )
                         send_mail(subj, msg, frm, to)
-                        logger.info('Password reset email sent to %r', to)
+                        logger.warning('EMAIL SENT OK to %s', to)
                     except Exception as exc:
-                        logger.error('Password reset email FAILED for %r: %s', to, exc, exc_info=True)
+                        logger.error('EMAIL FAILED: %s', exc)
 
                 threading.Thread(
                     target=_send,
