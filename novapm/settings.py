@@ -40,7 +40,6 @@ INSTALLED_APPS = [
     # Tailwind
     'tailwind',
     'theme',
-    'django_browser_reload',
     # NovaPM apps
     'accounts.apps.AccountsConfig',
     'projects.apps.ProjectsConfig',
@@ -53,11 +52,13 @@ INSTALLED_APPS = [
     'reports.apps.ReportsConfig',
 ]
 
+if DEBUG:
+    INSTALLED_APPS += ['django_browser_reload']
+
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
-    'django_browser_reload.middleware.BrowserReloadMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -65,6 +66,9 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
+
+if DEBUG:
+    MIDDLEWARE.insert(3, 'django_browser_reload.middleware.BrowserReloadMiddleware')
 
 ROOT_URLCONF = 'novapm.urls'
 
@@ -160,7 +164,8 @@ if _email_user:
     EMAIL_USE_SSL       = env.bool('EMAIL_USE_SSL', default=False)
     EMAIL_HOST_USER     = _email_user
     EMAIL_HOST_PASSWORD = env('EMAIL_HOST_PASSWORD', default='')
-    DEFAULT_FROM_EMAIL  = env('DEFAULT_FROM_EMAIL', default=f'NovaPM <{_email_user}>')
+    _from = env('DEFAULT_FROM_EMAIL', default='')
+    DEFAULT_FROM_EMAIL  = _from if _from else f'NovaPM <{_email_user}>'
 else:
     EMAIL_BACKEND      = 'django.core.mail.backends.console.EmailBackend'
     DEFAULT_FROM_EMAIL = 'noreply@novapm.pl'

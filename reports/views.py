@@ -28,13 +28,37 @@ from reportlab.platypus import (
     Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle,
 )
 
-# ── Font registration (Arial for Polish diacritics; fallback to Helvetica) ───
-try:
-    pdfmetrics.registerFont(TTFont('PDF-Regular', 'C:/Windows/Fonts/arial.ttf'))
-    pdfmetrics.registerFont(TTFont('PDF-Bold',    'C:/Windows/Fonts/arialbd.ttf'))
-    FONT      = 'PDF-Regular'
-    FONT_BOLD = 'PDF-Bold'
-except Exception:
+# ── Font registration — DejaVu (Linux/Render), Arial (Windows), fallback Helvetica
+import os as _os
+
+_DEJAVU_PATHS = [
+    ('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',
+     '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf'),
+    ('/usr/share/fonts/dejavu/DejaVuSans.ttf',
+     '/usr/share/fonts/dejavu/DejaVuSans-Bold.ttf'),
+    ('/usr/share/fonts/truetype/ttf-dejavu/DejaVuSans.ttf',
+     '/usr/share/fonts/truetype/ttf-dejavu/DejaVuSans-Bold.ttf'),
+]
+_ARIAL_PATHS = [
+    ('C:/Windows/Fonts/arial.ttf', 'C:/Windows/Fonts/arialbd.ttf'),
+]
+
+def _try_register(regular, bold):
+    pdfmetrics.registerFont(TTFont('PDF-Regular', regular))
+    pdfmetrics.registerFont(TTFont('PDF-Bold', bold))
+
+FONT = FONT_BOLD = None
+for _r, _b in _DEJAVU_PATHS + _ARIAL_PATHS:
+    if _os.path.exists(_r) and _os.path.exists(_b):
+        try:
+            _try_register(_r, _b)
+            FONT      = 'PDF-Regular'
+            FONT_BOLD = 'PDF-Bold'
+            break
+        except Exception:
+            pass
+
+if not FONT:
     FONT      = 'Helvetica'
     FONT_BOLD = 'Helvetica-Bold'
 

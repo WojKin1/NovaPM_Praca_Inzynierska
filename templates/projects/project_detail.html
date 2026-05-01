@@ -17,17 +17,17 @@
         {% if request.user.role == 'ANALYST' %}
         <div class="hidden sm:flex items-center gap-1 text-sm ml-2">
             <a href="{% url 'my_requirements_projects' %}" class="px-3 py-1 rounded-md text-amber-400 hover:text-white hover:bg-gray-800 transition">Moje projekty</a>
-            <a href="{% url 'my_timesheet' %}" class="px-3 py-1 rounded-md text-gray-400 hover:text-white hover:bg-gray-800 transition">Timesheet</a>
+            <a href="{% url 'my_timesheet' %}" class="px-3 py-1 rounded-md text-gray-400 hover:text-white hover:bg-gray-800 transition">Ewidencja czasu</a>
         </div>
         {% elif request.user.role == 'DEVELOPER' or request.user.role == 'TESTER' %}
         <div class="hidden sm:flex items-center gap-1 text-sm ml-2">
             <a href="{% url 'my_tasks' %}" class="px-3 py-1 rounded-md text-gray-400 hover:text-white hover:bg-gray-800 transition">Moje zadania</a>
-            <a href="{% url 'my_timesheet' %}" class="px-3 py-1 rounded-md text-gray-400 hover:text-white hover:bg-gray-800 transition">Timesheet</a>
+            <a href="{% url 'my_timesheet' %}" class="px-3 py-1 rounded-md text-gray-400 hover:text-white hover:bg-gray-800 transition">Ewidencja czasu</a>
         </div>
         {% elif request.user.role == 'PM' or request.user.is_staff %}
         <div class="hidden sm:flex items-center gap-1 text-sm ml-2">
             <a href="{% url 'project_list' %}" class="px-3 py-1 rounded-md text-gray-400 hover:text-white hover:bg-gray-800 transition">Projekty</a>
-            <a href="{% url 'my_timesheet' %}" class="px-3 py-1 rounded-md text-gray-400 hover:text-white hover:bg-gray-800 transition">Timesheet</a>
+            <a href="{% url 'my_timesheet' %}" class="px-3 py-1 rounded-md text-gray-400 hover:text-white hover:bg-gray-800 transition">Ewidencja czasu</a>
         </div>
         {% endif %}
     </div>

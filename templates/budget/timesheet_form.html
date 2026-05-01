@@ -15,14 +15,14 @@
         <div class="hidden sm:flex items-center gap-1 text-sm">
             {% if request.user.role == 'PM' or request.user.is_staff %}
             <a href="{% url 'project_list' %}" class="px-3 py-1 rounded-md text-gray-400 hover:text-white hover:bg-gray-800 transition">Projekty</a>
-            <a href="{% url 'my_timesheet' %}" class="px-3 py-1 rounded-md text-gray-400 hover:text-white hover:bg-gray-800 transition">Timesheet</a>
+            <a href="{% url 'my_timesheet' %}" class="px-3 py-1 rounded-md text-gray-400 hover:text-white hover:bg-gray-800 transition">Ewidencja czasu</a>
             {% elif request.user.role == 'ANALYST' %}
             <a href="{% url 'my_requirements_projects' %}" class="px-3 py-1 rounded-md text-gray-400 hover:text-white hover:bg-gray-800 transition">Moje projekty</a>
             <a href="{% url 'my_tasks' %}" class="px-3 py-1 rounded-md text-gray-400 hover:text-white hover:bg-gray-800 transition">Moje zadania</a>
-            <a href="{% url 'my_timesheet' %}" class="px-3 py-1 rounded-md text-gray-400 hover:text-white hover:bg-gray-800 transition">Timesheet</a>
+            <a href="{% url 'my_timesheet' %}" class="px-3 py-1 rounded-md text-gray-400 hover:text-white hover:bg-gray-800 transition">Ewidencja czasu</a>
             {% else %}
             <a href="{% url 'my_tasks' %}" class="px-3 py-1 rounded-md text-gray-400 hover:text-white hover:bg-gray-800 transition">Moje zadania</a>
-            <a href="{% url 'my_timesheet' %}" class="px-3 py-1 rounded-md text-gray-400 hover:text-white hover:bg-gray-800 transition">Timesheet</a>
+            <a href="{% url 'my_timesheet' %}" class="px-3 py-1 rounded-md text-gray-400 hover:text-white hover:bg-gray-800 transition">Ewidencja czasu</a>
             <a href="{% url 'cr_select_project' %}" class="px-3 py-1 rounded-md text-gray-400 hover:text-white hover:bg-gray-800 transition">Złóż wniosek</a>
             {% endif %}
         </div>
